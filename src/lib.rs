@@ -62,13 +62,10 @@
 //! # }
 //! ```
 
-#![deny(missing_docs,
-        missing_debug_implementations,
-	missing_copy_implementations,
-	trivial_casts,
+#![deny(
+  missing_debug_implementations,
 	trivial_numeric_casts,
 	unstable_features,
-	unused_import_braces,
 	unused_qualifications)]
 
 #![cfg_attr(feature = "dev", allow(unstable_features))]
@@ -83,6 +80,8 @@ extern crate entities;
 #[macro_use]
 extern crate lazy_static;
 extern crate twoway;
+#[macro_use]
+extern crate helix;
 
 mod arena_tree;
 mod parser;
@@ -111,4 +110,12 @@ pub fn markdown_to_html(md: &str, options: &ComrakOptions) -> String {
     let mut s = Vec::new();
     format_html(root, options, &mut s).unwrap();
     String::from_utf8(s).unwrap()
+}
+
+ruby! {
+    class Comrak {
+        def markdown_to_html(md: String) -> String {
+            ::markdown_to_html(&md, &ComrakOptions::default())
+        }
+    }
 }
