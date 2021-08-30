@@ -104,7 +104,7 @@ pub use cm::format_document as format_commonmark;
 pub use html::format_document as format_html;
 pub use html::Anchorizer;
 pub use parser::{
-    parse_document, parse_document_with_broken_link_callback, ComrakExtensionOptions,
+    dump_node, parse_document, parse_document_with_broken_link_callback, ComrakExtensionOptions,
     ComrakOptions, ComrakParseOptions, ComrakRenderOptions,
 };
 pub use typed_arena::Arena;

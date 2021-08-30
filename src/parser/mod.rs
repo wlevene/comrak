@@ -15,13 +15,19 @@ use scanners;
 use std::cell::RefCell;
 use std::cmp::min;
 use std::collections::HashMap;
-use std::mem;
+use std::io::{BufWriter, Write};
 use std::str;
+use std::{io, mem};
 use strings;
 use typed_arena::Arena;
 
 const TAB_STOP: usize = 4;
 const CODE_INDENT: usize = 4;
+
+/// Spaces to indent nested nodes
+const INDENT: usize = 4;
+/// If true, the close parenthesis is printed in its own line.
+const CLOSE_NEWLINE: bool = false;
 
 macro_rules! node_matches {
     ($node:expr, $pat:pat) => {{
@@ -38,6 +44,74 @@ pub fn parse_document<'a>(
     options: &ComrakOptions,
 ) -> &'a AstNode<'a> {
     parse_document_with_broken_link_callback(arena, buffer, options, None)
+}
+
+/// Dump Node
+///
+/// Dump Node
+pub fn dump_node<'a>(node: &'a AstNode<'a>) -> io::Result<()> {
+    let mut output = BufWriter::new(io::stdout());
+    iter_nodes(node, &mut output, 0)
+}
+
+fn iter_nodes<'a, W: Write>(
+    node: &'a AstNode<'a>,
+    writer: &mut W,
+    indent: usize,
+) -> io::Result<()> {
+    use self::NodeValue::*;
+
+    macro_rules! try_node_inline {
+        ($node:expr, $name:ident) => {{
+            if let $name(t) = $node {
+                return write!(
+                    writer,
+                    concat!(stringify!($name), "({:?})"),
+                    String::from_utf8_lossy(&t)
+                );
+            }
+        }};
+    }
+
+    match &node.data.borrow().value {
+        Text(t) => write!(writer, "{:?}", String::from_utf8_lossy(&t))?,
+        value => {
+            try_node_inline!(value, FootnoteDefinition);
+            try_node_inline!(value, FootnoteReference);
+            try_node_inline!(value, HtmlInline);
+
+            if let Code(code) = value {
+                return write!(
+                    writer,
+                    "Code({:?}, {})",
+                    String::from_utf8_lossy(&code.literal),
+                    code.num_backticks
+                );
+            }
+
+            let has_blocks = node.children().any(|c| c.data.borrow().value.block());
+
+            write!(writer, "({:?}", value)?;
+            for child in node.children() {
+                if has_blocks {
+                    write!(writer, "\n{1:0$}", indent + INDENT, " ")?;
+                } else {
+                    write!(writer, " ")?;
+                }
+                iter_nodes(child, writer, indent + INDENT)?;
+            }
+
+            if indent == 0 {
+                write!(writer, "\n)\n")?;
+            } else if CLOSE_NEWLINE && has_blocks {
+                write!(writer, "\n{1:0$})", indent, " ")?;
+            } else {
+                write!(writer, ")")?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Parse a Markdown document to an AST.

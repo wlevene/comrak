@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 // Samples used in the README.  Wanna make sure they work as advertised.
 
 extern crate comrak;
@@ -13,7 +15,7 @@ fn small() {
 
 fn large() {
     use comrak::nodes::{AstNode, NodeValue};
-    use comrak::{format_html, parse_document, Arena, ComrakOptions};
+    use comrak::{dump_node, format_html, parse_document, Arena, ComrakOptions};
 
     // The returned nodes are created in the supplied Arena, and are bound by its lifetime.
     let arena = Arena::new();
@@ -48,14 +50,21 @@ fn large() {
     let mut html = vec![];
     format_html(root, &ComrakOptions::default(), &mut html).unwrap();
 
+    let html_str = String::from_utf8(html).unwrap();
+
+    // println!("{:?}", root);
     assert_eq!(
-        String::from_utf8(html).unwrap(),
+        &html_str,
         "<p>This is your input.</p>\n\
          <ol>\n\
          <li>Also your input.</li>\n\
          <li>Certainly your input.</li>\n\
          </ol>\n"
     );
+
+    dump_node(root);
+
+    println!("{:?}", &html_str);
 }
 
 fn main() {
