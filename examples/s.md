@@ -8,6 +8,9 @@ theme: dark
     int a = 0;
 ```
 
+[12x12](https://github.github.com/gfm/#images)
+![w:200px h:200px blur:15x layout:center](xxx.png)
+
 
 
 
