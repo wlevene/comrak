@@ -70,6 +70,22 @@ pub fn html_block_end_5(line: &[u8]) -> bool {
 }
 
 #[inline(always)]
+pub fn open_slide_metadata(line: &[u8]) -> Option<usize> {
+    if line[0] != b'-' {
+        return None;
+    }
+    search(Rule::open_slide_metadata, line)
+}
+
+#[inline(always)]
+pub fn close_slide_metadata(line: &[u8]) -> Option<usize> {
+    if line[0] != b'-' {
+        return None;
+    }
+    search(Rule::close_slide_metadata, line)
+}
+
+#[inline(always)]
 pub fn open_code_fence(line: &[u8]) -> Option<usize> {
     if line[0] != b'`' && line[0] != b'~' {
         return None;

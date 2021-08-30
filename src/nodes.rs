@@ -61,6 +61,12 @@ pub enum NodeValue {
     /// **Block**. Details of an item in a definition list.
     DescriptionDetails,
 
+    /// **Block**. Details of slide metadata.
+    SlideMetaDataBlock(NodeSlideMetaDataBlock),
+
+    /// KV  auth: levene
+    KV(NodeKV),
+
     /// **Block**. A code block; may be [fenced](https://github.github.com/gfm/#fenced-code-blocks)
     /// or [indented](https://github.github.com/gfm/#indented-code-blocks).  Contains raw text
     /// which is not parsed as Markdown, although is HTML escaped.
@@ -175,6 +181,16 @@ pub struct NodeCode {
 
 /// The details of a link's destination, or an image's source.
 #[derive(Debug, Clone)]
+pub struct NodeKV {
+    /// key
+    pub key: Vec<u8>,
+
+    /// value
+    pub value: Vec<u8>,
+}
+
+/// The details of a link's destination, or an image's source.
+#[derive(Debug, Clone)]
 pub struct NodeLink {
     /// The URL for the link destination or image source.
     pub url: Vec<u8>,
@@ -250,6 +266,33 @@ impl Default for ListDelimType {
 
 /// The metadata and data of a code block (fenced or indented).
 #[derive(Default, Debug, Clone)]
+pub struct NodeSlideMetaDataBlock {
+    /// Whether the code block is fenced.
+    pub fenced: bool,
+
+    /// For fenced code blocks, the fence character itself (`---`).
+    pub fence_char: u8,
+
+    /// For fenced code blocks, the length of the fence.
+    pub fence_length: usize,
+
+    pub(crate) fence_offset: usize,
+
+    /// For fenced code blocks, the [info string](https://github.github.com/gfm/#info-string) after
+    /// the opening fence, if any.
+    pub info: Vec<u8>,
+
+    /// The literal contents of the code block.  As the contents are not interpreted as Markdown at
+    /// all, they are contained within this structure, rather than inserted into a child inline of
+    /// any kind.
+    pub literal: Vec<u8>,
+
+    /// metadata
+    pub metadatas: Vec<NodeKV>,
+}
+
+/// The metadata and data of a code block (fenced or indented).
+#[derive(Default, Debug, Clone)]
 pub struct NodeCodeBlock {
     /// Whether the code block is fenced.
     pub fenced: bool,
@@ -306,6 +349,7 @@ impl NodeValue {
                 | NodeValue::DescriptionTerm
                 | NodeValue::DescriptionDetails
                 | NodeValue::Item(..)
+                | NodeValue::SlideMetaDataBlock(..)
                 | NodeValue::CodeBlock(..)
                 | NodeValue::HtmlBlock(..)
                 | NodeValue::Paragraph
@@ -348,7 +392,10 @@ impl NodeValue {
     pub(crate) fn accepts_lines(&self) -> bool {
         matches!(
             *self,
-            NodeValue::Paragraph | NodeValue::Heading(..) | NodeValue::CodeBlock(..)
+            NodeValue::Paragraph
+                | NodeValue::Heading(..)
+                | NodeValue::CodeBlock(..)
+                | NodeValue::SlideMetaDataBlock(..)
         )
     }
 }
@@ -409,6 +456,8 @@ pub(crate) fn last_child_is_open<'a>(node: &'a AstNode<'a>) -> bool {
 }
 
 pub(crate) fn can_contain_type<'a>(node: &'a AstNode<'a>, child: &NodeValue) -> bool {
+    println!("xx: {:?} {:?}", node, child);
+
     match *child {
         NodeValue::Document => {
             return false;

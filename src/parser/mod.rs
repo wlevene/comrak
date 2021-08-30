@@ -8,7 +8,7 @@ use entity;
 use nodes;
 use nodes::{
     Ast, AstNode, ListDelimType, ListType, NodeCodeBlock, NodeDescriptionItem, NodeHeading,
-    NodeHtmlBlock, NodeList, NodeValue,
+    NodeHtmlBlock, NodeList, NodeSlideMetaDataBlock, NodeValue,
 };
 use regex::bytes::{Regex, RegexBuilder};
 use scanners;
@@ -88,6 +88,15 @@ fn iter_nodes<'a, W: Write>(
                     code.num_backticks
                 );
             }
+
+            // if let SlideMetaDataBlock(metadata) = value {
+            //     return write!(
+            //         writer,
+            //         "metadata({:?}, {:?})",
+            //         String::from_utf8_lossy(&metadata.literal),
+            //         metadata.metadatas
+            //     );
+            // }
 
             let has_blocks = node.children().any(|c| c.data.borrow().value.block());
 
@@ -737,6 +746,12 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                         return (false, container, should_continue);
                     }
                 }
+                NodeValue::SlideMetaDataBlock(..) => {
+                    if !self.parse_slide_metadata_prefix(line, container, ast, &mut should_continue)
+                    {
+                        return (false, container, should_continue);
+                    }
+                }
                 NodeValue::CodeBlock(..) => {
                     if !self.parse_code_block_prefix(line, container, ast, &mut should_continue) {
                         return (false, container, should_continue);
@@ -774,6 +789,8 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
     }
 
     fn open_new_blocks(&mut self, container: &mut &'a AstNode<'a>, line: &[u8], all_matched: bool) {
+        println!("open new blocks");
+
         let mut matched: usize = 0;
         let mut nl: NodeList = NodeList::default();
         let mut sc: scanners::SetextChar = scanners::SetextChar::Equals;
@@ -781,8 +798,9 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
 
         while !matches!(
             container.data.borrow().value,
-            NodeValue::CodeBlock(..) | NodeValue::HtmlBlock(..)
+            NodeValue::CodeBlock(..) | NodeValue::HtmlBlock(..) | NodeValue::SlideMetaDataBlock(..)
         ) {
+            println!("open new blocks 1");
             self.find_first_nonspace(line);
             let indented = self.indent >= CODE_INDENT;
 
@@ -821,6 +839,27 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 });
             } else if !indented
                 && unwrap_into(
+                    scanners::open_slide_metadata(&line[self.first_nonspace..]),
+                    &mut matched,
+                )
+            {
+                let first_nonspace = self.first_nonspace;
+                let offset = self.offset;
+                let smd = NodeSlideMetaDataBlock {
+                    fenced: true,
+                    fence_char: line[first_nonspace],
+                    fence_length: matched,
+                    fence_offset: first_nonspace - offset,
+                    info: Vec::with_capacity(10),
+                    literal: Vec::new(),
+                    metadatas: Vec::new(),
+                };
+
+                println!("slide metadata {:?} {:?}", *container, &smd);
+                *container = self.add_child(*container, NodeValue::SlideMetaDataBlock(smd));
+                self.advance_offset(line, first_nonspace + matched - offset, false);
+            } else if !indented
+                && unwrap_into(
                     scanners::open_code_fence(&line[self.first_nonspace..]),
                     &mut matched,
                 )
@@ -835,6 +874,8 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     info: Vec::with_capacity(10),
                     literal: Vec::new(),
                 };
+
+                println!("code : {:?}", &ncb.literal);
                 *container = self.add_child(*container, NodeValue::CodeBlock(ncb));
                 self.advance_offset(line, first_nonspace + matched - offset, false);
             } else if !indented
@@ -864,6 +905,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     _ => false,
                 }
             {
+                println!("open new blocks 2");
                 let has_content = {
                     let mut ast = container.data.borrow_mut();
                     self.resolve_reference_link_definitions(&mut ast.content)
@@ -888,6 +930,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     ),
                 }
             {
+                println!("open new blocks 3");
                 *container = self.add_child(*container, NodeValue::ThematicBreak);
                 let adv = line.len() - 1 - self.offset;
                 self.advance_offset(line, adv, false);
@@ -898,6 +941,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     &mut matched,
                 )
             {
+                println!("open new blocks 8");
                 let mut c = &line[self.first_nonspace + 2..self.first_nonspace + matched];
                 c = c.split(|&e| e == b']').next().unwrap();
                 let offset = self.first_nonspace + matched - self.offset;
@@ -925,6 +969,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     &mut nl,
                 )
             {
+                println!("open new blocks 9");
                 let offset = self.first_nonspace + matched - self.offset;
                 self.advance_offset(line, offset, false);
                 let (save_partially_consumed_tab, save_offset, save_column) =
@@ -956,7 +1001,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 } {
                     *container = self.add_child(*container, NodeValue::List(nl));
                 }
-
+                println!("open new blocks 10");
                 *container = self.add_child(*container, NodeValue::Item(nl));
             } else if indented && !maybe_lazy && !self.blank {
                 self.advance_offset(line, CODE_INDENT, true);
@@ -968,29 +1013,36 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     info: vec![],
                     literal: Vec::new(),
                 };
+                println!("open new blocks 7");
                 *container = self.add_child(*container, NodeValue::CodeBlock(ncb));
             } else {
                 let new_container = if !indented && self.options.extension.table {
+                    println!("open new blocks 11");
                     table::try_opening_block(self, *container, line)
                 } else {
+                    println!("open new blocks 12");
                     None
                 };
 
                 match new_container {
                     Some((new_container, replace)) => {
+                        println!("open new blocks 4");
                         if replace {
                             container.insert_after(new_container);
                             container.detach();
                             *container = new_container;
                         } else {
                             *container = new_container;
+                            println!("open new blocks 5");
                         }
+                        println!("open new blocks 6");
                     }
                     _ => break,
                 }
             }
 
             if container.data.borrow().value.accepts_lines() {
+                println!("open new blocks 13");
                 break;
             }
 
@@ -1084,6 +1136,56 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
         } else {
             false
         }
+    }
+
+    fn parse_slide_metadata_prefix(
+        &mut self,
+        line: &[u8],
+        container: &'a AstNode<'a>,
+        ast: &mut Ast,
+        should_continue: &mut bool,
+    ) -> bool {
+        let (fenced, fence_char, fence_length, fence_offset) = match ast.value {
+            NodeValue::SlideMetaDataBlock(ref smd) => (
+                smd.fenced,
+                smd.fence_char,
+                smd.fence_length,
+                smd.fence_offset,
+            ),
+            _ => unreachable!(),
+        };
+
+        if !fenced {
+            if self.indent >= CODE_INDENT {
+                self.advance_offset(line, CODE_INDENT, true);
+                return true;
+            } else if self.blank {
+                let offset = self.first_nonspace - self.offset;
+                self.advance_offset(line, offset, false);
+                return true;
+            }
+            return false;
+        }
+
+        let matched = if self.indent <= 3 && line[self.first_nonspace] == fence_char {
+            scanners::close_slide_metadata(&line[self.first_nonspace..]).unwrap_or(0)
+        } else {
+            0
+        };
+
+        if matched >= fence_length {
+            *should_continue = false;
+            self.advance_offset(line, matched, false);
+            self.current = self.finalize_borrowed(container, ast).unwrap();
+            return false;
+        }
+
+        let mut i = fence_offset;
+        while i > 0 && strings::is_space_or_tab(line[self.offset]) {
+            self.advance_offset(line, 1, true);
+            i -= 1;
+        }
+        true
     }
 
     fn parse_code_block_prefix(
@@ -1217,6 +1319,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
             && match container.data.borrow().value {
                 NodeValue::BlockQuote | NodeValue::Heading(..) | NodeValue::ThematicBreak => false,
                 NodeValue::CodeBlock(ref ncb) => !ncb.fenced,
+                NodeValue::SlideMetaDataBlock(ref smd) => !smd.fenced,
                 NodeValue::Item(..) => {
                     container.first_child().is_some()
                         || container.data.borrow().start_line != self.line_number
@@ -1244,6 +1347,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
             let add_text_result = match container.data.borrow().value {
                 NodeValue::CodeBlock(..) => AddTextResult::CodeBlock,
                 NodeValue::HtmlBlock(ref nhb) => AddTextResult::HtmlBlock(nhb.block_type),
+                NodeValue::SlideMetaDataBlock(ref smd) => AddTextResult::SlideBlock,
                 _ => AddTextResult::Otherwise,
             };
 
@@ -1251,6 +1355,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 AddTextResult::CodeBlock => {
                     self.add_line(container, line);
                 }
+                AddTextResult::SlideBlock => self.add_line(container, line),
                 AddTextResult::HtmlBlock(block_type) => {
                     self.add_line(container, line);
 
@@ -1385,6 +1490,45 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 if !has_content {
                     node.detach();
                 }
+            }
+            NodeValue::SlideMetaDataBlock(ref mut smd) => {
+                if !smd.fenced {
+                    strings::remove_trailing_blank_lines(content);
+                    content.push(b'\n');
+                } else {
+                    let mut pos = 0;
+                    while pos < content.len() {
+                        if strings::is_line_end_char(content[pos]) {
+                            break;
+                        }
+                        pos += 1;
+                    }
+                    assert!(pos < content.len());
+
+                    let mut tmp = entity::unescape_html(&content[..pos]);
+                    strings::trim(&mut tmp);
+                    strings::unescape(&mut tmp);
+                    if tmp.is_empty() {
+                        smd.info = self
+                            .options
+                            .parse
+                            .default_info_string
+                            .as_ref()
+                            .map_or(vec![], |s| s.as_bytes().to_vec());
+                    } else {
+                        smd.info = tmp;
+                    }
+
+                    if content[pos] == b'\r' {
+                        pos += 1;
+                    }
+                    if content[pos] == b'\n' {
+                        pos += 1;
+                    }
+
+                    *content = content[pos..].to_vec();
+                }
+                mem::swap(&mut smd.literal, content);
             }
             NodeValue::CodeBlock(ref mut ncb) => {
                 if !ncb.fenced {
@@ -1754,6 +1898,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
 enum AddTextResult {
     CodeBlock,
     HtmlBlock(u8),
+    SlideBlock,
     Otherwise,
 }
 

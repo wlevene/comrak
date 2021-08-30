@@ -3,13 +3,15 @@ use nodes;
 use nodes::TableAlignment;
 use nodes::{
     AstNode, ListDelimType, ListType, NodeCodeBlock, NodeHeading, NodeHtmlBlock, NodeLink,
-    NodeValue,
+    NodeSlideMetaDataBlock, NodeValue,
 };
 use parser::ComrakOptions;
 use scanners;
 use std;
 use std::cmp::max;
 use std::io::{self, Write};
+
+use crate::nodes::NodeKV;
 
 /// Formats an AST as CommonMark, modified by the given options.
 pub fn format_document<'a>(
@@ -306,6 +308,10 @@ impl<'a, 'o> CommonMarkFormatter<'a, 'o> {
             NodeValue::DescriptionTerm => (),
             NodeValue::DescriptionDetails => self.format_description_details(entering),
             NodeValue::Heading(ref nch) => self.format_heading(nch, entering),
+            NodeValue::SlideMetaDataBlock(ref smd) => {
+                self.format_slide_meta_data_block(node, smd, entering)
+            }
+            NodeValue::KV(ref kv) => self.format_kv(node, kv, entering),
             NodeValue::CodeBlock(ref ncb) => self.format_code_block(node, ncb, entering),
             NodeValue::HtmlBlock(ref nhb) => self.format_html_block(nhb, entering),
             NodeValue::ThematicBreak => self.format_thematic_break(entering),
@@ -435,6 +441,15 @@ impl<'a, 'o> CommonMarkFormatter<'a, 'o> {
         }
     }
 
+    fn format_kv(&mut self, node: &'a AstNode<'a>, kv: &NodeKV, entering: bool) {}
+
+    fn format_slide_meta_data_block(
+        &mut self,
+        node: &'a AstNode<'a>,
+        smd: &NodeSlideMetaDataBlock,
+        entering: bool,
+    ) {
+    }
     fn format_code_block(&mut self, node: &'a AstNode<'a>, ncb: &NodeCodeBlock, entering: bool) {
         if entering {
             let first_in_list_item = node.previous_sibling().is_none()

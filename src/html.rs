@@ -464,6 +464,8 @@ impl<'o> HtmlFormatter<'o> {
                     writeln!(self.output, "</h{}>", nch.level)?;
                 }
             }
+            NodeValue::SlideMetaDataBlock(ref smd) => {}
+            NodeValue::KV(ref kv) => {}
             NodeValue::CodeBlock(ref ncb) => {
                 if entering {
                     self.cr()?;
