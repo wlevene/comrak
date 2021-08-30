@@ -37,28 +37,38 @@ fn parse() {
     }
 
     iter_nodes(root, &|node| {
-        if let NodeValue::SlideMetaDataBlock(ref mut smd) = node.data.borrow_mut().value {
-            let kv_literal = String::from_utf8_lossy(&smd.literal);
+        match node.data.borrow_mut().value {
+            NodeValue::SlideMetaDataBlock(ref mut smd) => {
+                let kv_literal = String::from_utf8_lossy(&smd.literal);
 
-            // smd.metadatas = Vec::new();
-            let lines = kv_literal.lines();
-            for line in lines {
-                // let kv = NodeValue::KV;
-                if let Some((k, v)) = line.split_once(':') {
-                    if k.len() <= 0 {
-                        break;
+                // smd.metadatas = Vec::new();
+                let lines = kv_literal.lines();
+                for line in lines {
+                    // let kv = NodeValue::KV;
+                    if let Some((k, v)) = line.split_once(':') {
+                        if k.len() <= 0 {
+                            break;
+                        }
+
+                        println!("{:?}:{:?}", k, v);
+                        let nodekv = NodeKV {
+                            key: k.as_bytes().to_vec(),
+                            value: v.as_bytes().to_vec(),
+                        };
+                        // println!("{:?}", &nodekv);
+                        // let kv = NodeValue::KV(nodekv);
+                        smd.metadatas.push(nodekv);
                     }
-
-                    println!("{:?}:{:?}", k, v);
-                    let nodekv = NodeKV {
-                        key: k.as_bytes().to_vec(),
-                        value: v.as_bytes().to_vec(),
-                    };
-                    // println!("{:?}", &nodekv);
-                    // let kv = NodeValue::KV(nodekv);
-                    smd.metadatas.push(nodekv);
                 }
             }
+            NodeValue::CodeBlock(ref mut codeblock) => {
+                println!(
+                    "{:?} {:?}",
+                    String::from_utf8_lossy(&codeblock.info),
+                    String::from_utf8_lossy(&codeblock.literal)
+                )
+            }
+            _ => (),
         }
     });
 
