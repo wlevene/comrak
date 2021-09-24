@@ -86,6 +86,14 @@ pub fn close_slide_metadata(line: &[u8]) -> Option<usize> {
 }
 
 #[inline(always)]
+pub fn effect(line: &[u8]) -> Option<usize> {
+    if line[0] != b':' {
+        return None;
+    }
+    search(Rule::effect, line)
+}
+
+#[inline(always)]
 pub fn open_code_fence(line: &[u8]) -> Option<usize> {
     if line[0] != b'`' && line[0] != b'~' {
         return None;

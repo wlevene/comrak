@@ -1219,5 +1219,7 @@ fn exercise_full_api() {
         ::nodes::NodeValue::FootnoteReference(name) => {
             let _: &Vec<u8> = name;
         }
+        ::nodes::NodeValue::SlideMetaDataBlock(ref smd) => {}
+        ::nodes::NodeValue::KV(ref kv) => {}
     }
 }

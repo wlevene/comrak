@@ -311,6 +311,9 @@ impl<'a, 'o> CommonMarkFormatter<'a, 'o> {
             NodeValue::SlideMetaDataBlock(ref smd) => {
                 self.format_slide_meta_data_block(node, smd, entering)
             }
+            NodeValue::Effect(ref effect) => {
+                // self.format_slide_meta_data_block(node, smd, entering)
+            }
             NodeValue::KV(ref kv) => self.format_kv(node, kv, entering),
             NodeValue::CodeBlock(ref ncb) => self.format_code_block(node, ncb, entering),
             NodeValue::HtmlBlock(ref nhb) => self.format_html_block(nhb, entering),

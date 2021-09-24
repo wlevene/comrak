@@ -465,6 +465,7 @@ impl<'o> HtmlFormatter<'o> {
                 }
             }
             NodeValue::SlideMetaDataBlock(ref smd) => {}
+            NodeValue::Effect(ref effect) => {}
             NodeValue::KV(ref kv) => {}
             NodeValue::CodeBlock(ref ncb) => {
                 if entering {

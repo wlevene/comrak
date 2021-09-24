@@ -9,6 +9,7 @@ pub enum NodeValue {
     /// The root of every CommonMark document.  Contains **blocks**.
     Document,
 
+    // Group,
     /// Non-Markdown front matter. Treated as an opaque blob.
     FrontMatter(Vec<u8>),
 
@@ -148,6 +149,9 @@ pub enum NodeValue {
 
     /// **Inline**.  A footnote reference; the `Vec<u8>` is the referent footnote's name.
     FootnoteReference(Vec<u8>),
+
+    /// Effect
+    Effect(EffectAttr),
 }
 
 /// Alignment of a single table cell.
@@ -293,6 +297,17 @@ pub struct NodeSlideMetaDataBlock {
 
 /// The metadata and data of a code block (fenced or indented).
 #[derive(Default, Debug, Clone)]
+pub struct EffectAttr {
+    /// The literal contents of the code block.  As the contents are not interpreted as Markdown at
+    /// all, they are contained within this structure, rather than inserted into a child inline of
+    /// any kind.
+    pub literal: Vec<u8>,
+    // /// metadata
+    // pub metadatas: Vec<NodeKV>,
+}
+
+/// The metadata and data of a code block (fenced or indented).
+#[derive(Default, Debug, Clone)]
 pub struct NodeCodeBlock {
     /// Whether the code block is fenced.
     pub fenced: bool,
@@ -397,6 +412,10 @@ impl NodeValue {
                 | NodeValue::CodeBlock(..)
                 | NodeValue::SlideMetaDataBlock(..)
         )
+    }
+
+    pub(crate) fn is_indent(&self) -> bool {
+        return false;
     }
 }
 

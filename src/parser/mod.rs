@@ -21,6 +21,8 @@ use std::{io, mem};
 use strings;
 use typed_arena::Arena;
 
+use crate::nodes::EffectAttr;
+
 const TAB_STOP: usize = 4;
 const CODE_INDENT: usize = 4;
 
@@ -677,6 +679,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
 
         self.line_number += 1;
 
+        // READ: here
         let mut all_matched = true;
         if let Some(last_matched_container) = self.check_open_blocks(line, &mut all_matched) {
             let mut container = last_matched_container;
@@ -858,7 +861,22 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 println!("slide metadata {:?} {:?}", *container, &smd);
                 *container = self.add_child(*container, NodeValue::SlideMetaDataBlock(smd));
                 self.advance_offset(line, first_nonspace + matched - offset, false);
-            } else if !indented
+            }
+            /* else if !indented
+                && unwrap_into(scanners::effect(&line[self.first_nonspace..]), &mut matched)
+            {
+                let first_nonspace = self.first_nonspace;
+                let offset = self.offset;
+                let effect = EffectAttr {
+                    literal: Vec::new(),
+                };
+
+                println!("effect {:?} {:?}", *container, &effect);
+                println!("container:{:?}", &container);
+                *container = self.add_child(*container, NodeValue::Effect(effect));
+                self.advance_offset(line, first_nonspace + matched - offset, false);
+            }*/
+            else if !indented
                 && unwrap_into(
                     scanners::open_code_fence(&line[self.first_nonspace..]),
                     &mut matched,
@@ -1347,7 +1365,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
             let add_text_result = match container.data.borrow().value {
                 NodeValue::CodeBlock(..) => AddTextResult::CodeBlock,
                 NodeValue::HtmlBlock(ref nhb) => AddTextResult::HtmlBlock(nhb.block_type),
-                NodeValue::SlideMetaDataBlock(ref smd) => AddTextResult::SlideBlock,
+                NodeValue::SlideMetaDataBlock(ref _smd) => AddTextResult::SlideBlock,
                 _ => AddTextResult::Otherwise,
             };
 
@@ -1355,7 +1373,11 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 AddTextResult::CodeBlock => {
                     self.add_line(container, line);
                 }
-                AddTextResult::SlideBlock => self.add_line(container, line),
+                AddTextResult::SlideBlock => {
+                    self.add_line(container, line);
+                    let s = String::from_utf8_lossy(line);
+                    println!("slide meta data raw string : {}", s);
+                }
                 AddTextResult::HtmlBlock(block_type) => {
                     self.add_line(container, line);
 

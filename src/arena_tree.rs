@@ -21,6 +21,7 @@ use std::cell::Cell;
 use std::fmt;
 
 /// A node inside a DOM-like tree.
+
 pub struct Node<'a, T: 'a> {
     parent: Cell<Option<&'a Node<'a, T>>>,
     previous_sibling: Cell<Option<&'a Node<'a, T>>>,
