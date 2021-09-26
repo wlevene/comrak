@@ -762,7 +762,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 }
                 NodeValue::HtmlBlock(ref nhb) => {
                     if !self.parse_html_block_prefix(nhb.block_type) {
-                        return (false, container, should_continue);
+                        return (true, container, should_continue);
                     }
                 }
                 NodeValue::Paragraph => {
@@ -778,6 +778,11 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 }
                 NodeValue::Heading(..) | NodeValue::TableRow(..) | NodeValue::TableCell => {
                     return (false, container, should_continue);
+                }
+                NodeValue::Effect(..) => {
+                    // if self.blank {
+                    return (false, container, should_continue);
+                    // }
                 }
                 NodeValue::FootnoteDefinition(..) => {
                     if !self.parse_footnote_definition_block_prefix(line) {
@@ -803,7 +808,6 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
             container.data.borrow().value,
             NodeValue::CodeBlock(..) | NodeValue::HtmlBlock(..) | NodeValue::SlideMetaDataBlock(..)
         ) {
-            println!("open new blocks 1");
             self.find_first_nonspace(line);
             let indented = self.indent >= CODE_INDENT;
 
@@ -841,6 +845,19 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     setext: false,
                 });
             } else if !indented
+                && unwrap_into(scanners::effect(&line[self.first_nonspace..]), &mut matched)
+            {
+                // TODO: effect
+                let effect_nonspace = self.first_nonspace;
+                let offset = self.offset;
+                self.advance_offset(line, effect_nonspace + matched - offset, false);
+
+                let effect = EffectAttr::default();
+                // let effect = EffectAttr {
+                //     literal: line.to_vec(),
+                // };
+                *container = self.add_child(*container, NodeValue::Effect(effect));
+            } else if !indented
                 && unwrap_into(
                     scanners::open_slide_metadata(&line[self.first_nonspace..]),
                     &mut matched,
@@ -861,22 +878,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 println!("slide metadata {:?} {:?}", *container, &smd);
                 *container = self.add_child(*container, NodeValue::SlideMetaDataBlock(smd));
                 self.advance_offset(line, first_nonspace + matched - offset, false);
-            }
-            /* else if !indented
-                && unwrap_into(scanners::effect(&line[self.first_nonspace..]), &mut matched)
-            {
-                let first_nonspace = self.first_nonspace;
-                let offset = self.offset;
-                let effect = EffectAttr {
-                    literal: Vec::new(),
-                };
-
-                println!("effect {:?} {:?}", *container, &effect);
-                println!("container:{:?}", &container);
-                *container = self.add_child(*container, NodeValue::Effect(effect));
-                self.advance_offset(line, first_nonspace + matched - offset, false);
-            }*/
-            else if !indented
+            } else if !indented
                 && unwrap_into(
                     scanners::open_code_fence(&line[self.first_nonspace..]),
                     &mut matched,
@@ -1366,6 +1368,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 NodeValue::CodeBlock(..) => AddTextResult::CodeBlock,
                 NodeValue::HtmlBlock(ref nhb) => AddTextResult::HtmlBlock(nhb.block_type),
                 NodeValue::SlideMetaDataBlock(ref _smd) => AddTextResult::SlideBlock,
+                NodeValue::Effect(..) => AddTextResult::Effect,
                 _ => AddTextResult::Otherwise,
             };
 
@@ -1377,6 +1380,11 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     self.add_line(container, line);
                     let s = String::from_utf8_lossy(line);
                     println!("slide meta data raw string : {}", s);
+                }
+                AddTextResult::Effect => {
+                    self.add_line(container, line);
+                    let s = String::from_utf8_lossy(line);
+                    println!("Addtextresult::Effect : {}", s);
                 }
                 AddTextResult::HtmlBlock(block_type) => {
                     self.add_line(container, line);
@@ -1394,6 +1402,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                         container = self.finalize(container).unwrap();
                     }
                 }
+
                 _ => {
                     if self.blank {
                         // do nothing
@@ -1513,6 +1522,9 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     node.detach();
                 }
             }
+            NodeValue::Effect(ref mut effect_attr) => {
+                println!("finalize_borrowed :: {:?}", content)
+            }
             NodeValue::SlideMetaDataBlock(ref mut smd) => {
                 if !smd.fenced {
                     strings::remove_trailing_blank_lines(content);
@@ -1527,19 +1539,19 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     }
                     assert!(pos < content.len());
 
-                    let mut tmp = entity::unescape_html(&content[..pos]);
-                    strings::trim(&mut tmp);
-                    strings::unescape(&mut tmp);
-                    if tmp.is_empty() {
-                        smd.info = self
-                            .options
-                            .parse
-                            .default_info_string
-                            .as_ref()
-                            .map_or(vec![], |s| s.as_bytes().to_vec());
-                    } else {
-                        smd.info = tmp;
-                    }
+                    // let mut tmp = entity::unescape_html(&content[..pos]);
+                    // strings::trim(&mut tmp);
+                    // strings::unescape(&mut tmp);
+                    // if tmp.is_empty() {
+                    //     smd.info = self
+                    //         .options
+                    //         .parse
+                    //         .default_info_string
+                    //         .as_ref()
+                    //         .map_or(vec![], |s| s.as_bytes().to_vec());
+                    // } else {
+                    //     smd.info = tmp;
+                    // }
 
                     if content[pos] == b'\r' {
                         pos += 1;
@@ -1756,6 +1768,8 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                                 Some(ns) => ns,
                                 _ => {
                                     // Post-process once we are finished joining text nodes
+
+                                    println!("aaaaaaaaa {:?}", String::from_utf8_lossy(root));
                                     self.postprocess_text_node(n, root);
                                     break;
                                 }
@@ -1774,6 +1788,11 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                             }
                         }
                         NodeValue::Link(..) | NodeValue::Image(..) => {
+                            this_bracket = true;
+                            break;
+                        }
+                        NodeValue::Effect(..) => {
+                            println!("Effect11111");
                             this_bracket = true;
                             break;
                         }
@@ -1802,6 +1821,54 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
         if self.options.extension.autolink {
             autolink::process_autolinks(self.arena, node, text);
         }
+
+        self.process_effect(node, text);
+    }
+
+    fn process_effect(&mut self, node: &AstNode, contents: &mut Vec<u8>) {
+        // let len = contents.len();
+        // let mut i = 0;
+
+        // while i < len {
+        //     let mut post_org = None;
+
+        //     while i < len {
+        //         match contents[i] {
+        //             b':' => {
+        //                 post_org = url_match(arena, contents, i);
+        //                 if post_org.is_some() {
+        //                     break;
+        //                 }
+        //             }
+        //             b'w' => {
+        //                 post_org = www_match(arena, contents, i);
+        //                 if post_org.is_some() {
+        //                     break;
+        //                 }
+        //             }
+        //             b'@' => {
+        //                 post_org = email_match(arena, contents, i);
+        //                 if post_org.is_some() {
+        //                     break;
+        //                 }
+        //             }
+        //             _ => (),
+        //         }
+        //         i += 1;
+        //     }
+
+        //     if let Some((post, reverse, skip)) = post_org {
+        //         i -= reverse;
+        //         node.insert_after(post);
+        //         if i + skip < len {
+        //             let remain = contents[i + skip..].to_vec();
+        //             assert!(!remain.is_empty());
+        //             post.insert_after(make_inline(arena, NodeValue::Text(remain)));
+        //         }
+        //         contents.truncate(i);
+        //         return;
+        //     }
+        // }
     }
 
     fn process_tasklist(&mut self, node: &'a AstNode<'a>, text: &mut Vec<u8>) {
@@ -1921,6 +1988,7 @@ enum AddTextResult {
     CodeBlock,
     HtmlBlock(u8),
     SlideBlock,
+    Effect,
     Otherwise,
 }
 

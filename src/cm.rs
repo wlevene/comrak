@@ -2,8 +2,8 @@ use ctype::{isalpha, isdigit, ispunct, isspace};
 use nodes;
 use nodes::TableAlignment;
 use nodes::{
-    AstNode, ListDelimType, ListType, NodeCodeBlock, NodeHeading, NodeHtmlBlock, NodeLink,
-    NodeSlideMetaDataBlock, NodeValue,
+    AstNode, EffectAttr, ListDelimType, ListType, NodeCodeBlock, NodeHeading, NodeHtmlBlock,
+    NodeLink, NodeSlideMetaDataBlock, NodeValue,
 };
 use parser::ComrakOptions;
 use scanners;
@@ -331,6 +331,7 @@ impl<'a, 'o> CommonMarkFormatter<'a, 'o> {
             NodeValue::Superscript => self.format_superscript(),
             NodeValue::Link(ref nl) => return self.format_link(node, nl, entering),
             NodeValue::Image(ref nl) => self.format_image(nl, allow_wrap, entering),
+            NodeValue::Effect(ref effect_attr) => self.format_effect(),
             NodeValue::Table(..) => self.format_table(entering),
             NodeValue::TableRow(..) => self.format_table_row(entering),
             NodeValue::TableCell => self.format_table_cell(node, entering),
@@ -643,6 +644,10 @@ impl<'a, 'o> CommonMarkFormatter<'a, 'o> {
         }
 
         return true;
+    }
+
+    fn format_effect(&mut self) {
+        println!("format_effect");
     }
 
     fn format_image(&mut self, nl: &NodeLink, allow_wrap: bool, entering: bool) {

@@ -1,7 +1,7 @@
 use arena_tree::Node;
 use ctype::{ispunct, isspace};
 use entity;
-use nodes::{Ast, AstNode, NodeCode, NodeLink, NodeValue};
+use nodes::{Ast, AstNode, EffectAttr, NodeCode, NodeLink, NodeValue};
 use parser::{unwrap_into_2, unwrap_into_copy, AutolinkType, Callback, ComrakOptions, Reference};
 use scanners;
 use std::cell::{Cell, RefCell};

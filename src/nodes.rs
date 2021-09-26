@@ -373,6 +373,7 @@ impl NodeValue {
                 | NodeValue::Table(..)
                 | NodeValue::TableRow(..)
                 | NodeValue::TableCell
+                | NodeValue::Effect(..)
         )
     }
 
@@ -475,7 +476,7 @@ pub(crate) fn last_child_is_open<'a>(node: &'a AstNode<'a>) -> bool {
 }
 
 pub(crate) fn can_contain_type<'a>(node: &'a AstNode<'a>, child: &NodeValue) -> bool {
-    println!("xx: {:?} {:?}", node, child);
+    println!("can_contain_type: {:?} {:?}", node, child);
 
     match *child {
         NodeValue::Document => {
@@ -493,6 +494,7 @@ pub(crate) fn can_contain_type<'a>(node: &'a AstNode<'a>, child: &NodeValue) -> 
         | NodeValue::FootnoteDefinition(_)
         | NodeValue::DescriptionTerm
         | NodeValue::DescriptionDetails
+        | NodeValue::SlideMetaDataBlock(..)
         | NodeValue::Item(..) => child.block() && !matches!(*child, NodeValue::Item(..)),
 
         NodeValue::List(..) => matches!(*child, NodeValue::Item(..)),
@@ -508,6 +510,7 @@ pub(crate) fn can_contain_type<'a>(node: &'a AstNode<'a>, child: &NodeValue) -> 
         | NodeValue::Heading(..)
         | NodeValue::Emph
         | NodeValue::Strong
+        | NodeValue::Effect(..)
         | NodeValue::Link(..)
         | NodeValue::Image(..) => !child.block(),
 
