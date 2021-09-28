@@ -797,8 +797,6 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
     }
 
     fn open_new_blocks(&mut self, container: &mut &'a AstNode<'a>, line: &[u8], all_matched: bool) {
-        println!("open new blocks");
-
         let mut matched: usize = 0;
         let mut nl: NodeList = NodeList::default();
         let mut sc: scanners::SetextChar = scanners::SetextChar::Equals;
@@ -844,7 +842,8 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     level,
                     setext: false,
                 });
-            } else if !indented
+            }
+            /*else if !indented
                 && unwrap_into(scanners::effect(&line[self.first_nonspace..]), &mut matched)
             {
                 // TODO: effect
@@ -857,7 +856,8 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 //     literal: line.to_vec(),
                 // };
                 *container = self.add_child(*container, NodeValue::Effect(effect));
-            } else if !indented
+            } */
+            else if !indented
                 && unwrap_into(
                     scanners::open_slide_metadata(&line[self.first_nonspace..]),
                     &mut matched,
@@ -875,7 +875,6 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     metadatas: Vec::new(),
                 };
 
-                println!("slide metadata {:?} {:?}", *container, &smd);
                 *container = self.add_child(*container, NodeValue::SlideMetaDataBlock(smd));
                 self.advance_offset(line, first_nonspace + matched - offset, false);
             } else if !indented
@@ -925,7 +924,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     _ => false,
                 }
             {
-                println!("open new blocks 2");
+                println!("open new blocks NodeValue::Paragraph");
                 let has_content = {
                     let mut ast = container.data.borrow_mut();
                     self.resolve_reference_link_definitions(&mut ast.content)
@@ -942,6 +941,18 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     self.advance_offset(line, adv, false);
                 }
             } else if !indented
+                && match container.data.borrow().value {
+                    NodeValue::Paragraph => {
+                        unwrap_into(scanners::effect(&line[self.first_nonspace..]), &mut matched)
+                    }
+                    _ => false,
+                }
+            {
+                println!("open new blocks NodeValue::Paragraph  effecteffecteffect");
+                // *container = self.add_child(*container, NodeValue::ThematicBreak);
+                // let adv = line.len() - 1 - self.offset;
+                // self.advance_offset(line, adv, false);
+            } else if !indented
                 && match (&container.data.borrow().value, all_matched) {
                     (&NodeValue::Paragraph, false) => false,
                     _ => unwrap_into(
@@ -950,7 +961,6 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     ),
                 }
             {
-                println!("open new blocks 3");
                 *container = self.add_child(*container, NodeValue::ThematicBreak);
                 let adv = line.len() - 1 - self.offset;
                 self.advance_offset(line, adv, false);
@@ -961,7 +971,6 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     &mut matched,
                 )
             {
-                println!("open new blocks 8");
                 let mut c = &line[self.first_nonspace + 2..self.first_nonspace + matched];
                 c = c.split(|&e| e == b']').next().unwrap();
                 let offset = self.first_nonspace + matched - self.offset;
@@ -989,7 +998,6 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     &mut nl,
                 )
             {
-                println!("open new blocks 9");
                 let offset = self.first_nonspace + matched - self.offset;
                 self.advance_offset(line, offset, false);
                 let (save_partially_consumed_tab, save_offset, save_column) =
@@ -1021,7 +1029,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 } {
                     *container = self.add_child(*container, NodeValue::List(nl));
                 }
-                println!("open new blocks 10");
+
                 *container = self.add_child(*container, NodeValue::Item(nl));
             } else if indented && !maybe_lazy && !self.blank {
                 self.advance_offset(line, CODE_INDENT, true);
@@ -1033,36 +1041,30 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     info: vec![],
                     literal: Vec::new(),
                 };
-                println!("open new blocks 7");
+
                 *container = self.add_child(*container, NodeValue::CodeBlock(ncb));
             } else {
                 let new_container = if !indented && self.options.extension.table {
-                    println!("open new blocks 11");
                     table::try_opening_block(self, *container, line)
                 } else {
-                    println!("open new blocks 12");
                     None
                 };
 
                 match new_container {
                     Some((new_container, replace)) => {
-                        println!("open new blocks 4");
                         if replace {
                             container.insert_after(new_container);
                             container.detach();
                             *container = new_container;
                         } else {
                             *container = new_container;
-                            println!("open new blocks 5");
                         }
-                        println!("open new blocks 6");
                     }
                     _ => break,
                 }
             }
 
             if container.data.borrow().value.accepts_lines() {
-                println!("open new blocks 13");
                 break;
             }
 
@@ -1364,6 +1366,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 self.current = self.finalize(self.current).unwrap();
             }
 
+            // TODO: debug
             let add_text_result = match container.data.borrow().value {
                 NodeValue::CodeBlock(..) => AddTextResult::CodeBlock,
                 NodeValue::HtmlBlock(ref nhb) => AddTextResult::HtmlBlock(nhb.block_type),
@@ -1504,6 +1507,39 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
         !strings::is_blank(content)
     }
 
+    fn resolve_effect_definitions(&mut self, content: &mut Vec<u8>) -> bool {
+        let mut seeked = 0;
+
+        // ::effect[] len
+        if content.len() < 10 {
+            return false;
+        }
+
+        let mut pos = 0;
+        let mut seek: &[u8] = &*content;
+
+        while !seek.is_empty()
+            && seek[0] == b':'
+            && seek[1] == b':'
+            && seek[2] == b'e'
+            && seek[3] == b'f'
+            && seek[4] == b'f'
+            && seek[5] == b'e'
+            && seek[6] == b'c'
+            && seek[7] == b't'
+            && unwrap_into(self.parse_effect_inline(seek), &mut pos)
+        {
+            seek = &seek[pos..];
+            seeked += pos;
+        }
+
+        if seeked != 0 {
+            *content = content[seeked..].to_vec();
+        }
+
+        !strings::is_blank(content)
+    }
+
     fn finalize_borrowed(
         &mut self,
         node: &'a AstNode<'a>,
@@ -1517,14 +1553,31 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
 
         match ast.value {
             NodeValue::Paragraph => {
-                let has_content = self.resolve_reference_link_definitions(content);
+                let has_content = self.resolve_reference_link_definitions(content)
+                    || self.resolve_effect_definitions(content);
                 if !has_content {
                     node.detach();
                 }
             }
-            NodeValue::Effect(ref mut effect_attr) => {
-                println!("finalize_borrowed :: {:?}", content)
-            }
+            // NodeValue::Effect(ref mut effect_attr) => {
+            //     // TODO:
+            //     println!(
+            //         "finalize_borrowed :: {:?}",
+            //         String::from_utf8_lossy(content)
+            //     );
+
+            //     let mut pos = 0;
+            //     while pos < content.len() {
+            //         if strings::is_line_end_char(content[pos]) {
+            //             break;
+            //         }
+            //         pos += 1;
+            //     }
+            //     assert!(pos < content.len());
+            //     *content = content[pos..].to_vec();
+
+            //     mem::swap(&mut effect_attr.literal, content);
+            // }
             NodeValue::SlideMetaDataBlock(ref mut smd) => {
                 if !smd.fenced {
                     strings::remove_trailing_blank_lines(content);
@@ -1787,12 +1840,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                                 }
                             }
                         }
-                        NodeValue::Link(..) | NodeValue::Image(..) => {
-                            this_bracket = true;
-                            break;
-                        }
-                        NodeValue::Effect(..) => {
-                            println!("Effect11111");
+                        NodeValue::Link(..) | NodeValue::Image(..) | NodeValue::Effect(..) => {
                             this_bracket = true;
                             break;
                         }
@@ -1980,6 +2028,22 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 title: strings::clean_title(&title),
             });
         }
+        Some(subj.pos)
+    }
+
+    fn parse_effect_inline(&mut self, content: &[u8]) -> Option<usize> {
+        let delimiter_arena = Arena::with_capacity(0);
+        let mut subj = inlines::Subject::new(
+            self.arena,
+            self.options,
+            content,
+            &mut self.refmap,
+            &delimiter_arena,
+            self.callback.as_mut(),
+        );
+
+        subj.skip_spaces();
+        if !subj.skip_line_end() {}
         Some(subj.pos)
     }
 }

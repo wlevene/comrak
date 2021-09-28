@@ -11,7 +11,4 @@ theme:dark || ./theme.json
 ![xx1](http://www.xxx.png)
 
 ## This is title 2
-![xx2](http://www.xxx.png)
 
-
-![xx3](http://www.xxx.png)

@@ -526,6 +526,7 @@ pub(crate) fn can_contain_type<'a>(node: &'a AstNode<'a>, child: &NodeValue) -> 
                 | NodeValue::Strong
                 | NodeValue::Link(..)
                 | NodeValue::Image(..)
+                // | NodeValue::Effect(..)
                 | NodeValue::Strikethrough
                 | NodeValue::HtmlInline(..)
         ),

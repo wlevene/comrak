@@ -50,6 +50,7 @@ struct Bracket<'a: 'd, 'd> {
     inl_text: &'a AstNode<'a>,
     position: usize,
     image: bool,
+    effect: bool,
     active: bool,
     bracket_after: bool,
 }
@@ -80,7 +81,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             callback,
         };
         for &c in &[
-            b'\n', b'\r', b'_', b'*', b'"', b'`', b'\\', b'&', b'<', b'[', b']', b'!',
+            b'\n', b'\r', b'_', b'*', b'"', b'`', b'\\', b'&', b'<', b'[', b']', b'!', b':',
         ] {
             s.special_chars[c as usize] = true;
         }
@@ -122,7 +123,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 self.pos += 1;
                 let inl = make_inline(self.arena, NodeValue::Text(b"[".to_vec()));
                 new_inl = Some(inl);
-                self.push_bracket(false, inl);
+                self.push_bracket(false, false, inl);
             }
             ']' => new_inl = self.handle_close_bracket(),
             '!' => {
@@ -131,9 +132,72 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                     self.pos += 1;
                     let inl = make_inline(self.arena, NodeValue::Text(b"![".to_vec()));
                     new_inl = Some(inl);
-                    self.push_bracket(true, inl);
+                    self.push_bracket(true, false, inl);
                 } else {
                     new_inl = Some(make_inline(self.arena, NodeValue::Text(b"!".to_vec())));
+                }
+            }
+            ':' => {
+                // for i in 0..8 {
+                //     let c = self.peek_char_n(i);
+                //     match c {
+                //         Some(cc) => {
+                //             let mut array = [*cc];
+                //             println!("eee:{:?} {:?}", i, String::from_utf8_lossy(&array));
+                //         }
+                //         None => {
+                //             println!("nil")
+                //         }
+                //     }
+                // }
+
+                self.pos += 1;
+                if self.peek_char() == Some(&(b':'))
+                    && self.peek_char_n(1) == Some(&(b'e'))
+                    && self.peek_char_n(2) == Some(&(b'f'))
+                    && self.peek_char_n(3) == Some(&(b'f'))
+                    && self.peek_char_n(4) == Some(&(b'e'))
+                    && self.peek_char_n(5) == Some(&(b'c'))
+                    && self.peek_char_n(6) == Some(&(b't'))
+                {
+                    self.pos += 7;
+
+                    println!(">>>>>>>>>>>>>>>>>>>.:");
+
+                    // TODO:
+
+                    // for i in 0..6 {
+                    //     let c = self.peek_char_n(i);
+                    //     match c {
+                    //         Some(cc) => {
+                    //             let mut array = [*cc];
+                    //             println!("eee:{:?} {:?}", i, String::from_utf8_lossy(&array));
+                    //         }
+                    //         None => {
+                    //             println!("nil")
+                    //         }
+                    //     }
+                    // }
+
+                    self.skip_spaces();
+
+                    if self.peek_char() == Some(&(b'[')) {
+                        println!("1>>>>>>>>>>>>>>>>>>>.:");
+                        println!("2>>>>>>>>>>>>>>>>>>>.:");
+
+                        self.pos += 1;
+                        let inl = make_inline(self.arena, NodeValue::Text(b"::effect[".to_vec()));
+                        new_inl = Some(inl);
+                        // new_inl = Some(self.handle_effect())
+                        self.push_bracket(false, true, inl);
+                    } else {
+                        new_inl = Some(make_inline(
+                            self.arena,
+                            NodeValue::Text(b"::effect".to_vec()),
+                        ));
+                    }
+                } else {
+                    new_inl = Some(make_inline(self.arena, NodeValue::Text(b":".to_vec())));
                 }
             }
             _ => {
@@ -847,6 +911,20 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         }
     }
 
+    pub fn handle_effect(&mut self) -> &'a AstNode<'a> {
+        self.pos += 1;
+
+        // match entity::unescape(&self.input[self.pos..]) {
+        //     None => make_inline(self.arena, NodeValue::Text(b"&".to_vec())),
+        //     Some((entity, len)) => {
+        //         self.pos += len;
+        //         make_inline(self.arena, NodeValue::Text(entity))
+        //     }
+        // }
+
+        return make_inline(self.arena, NodeValue::Text(b"&xx".to_vec()));
+    }
+
     pub fn handle_pointy_brace(&mut self) -> &'a AstNode<'a> {
         self.pos += 1;
 
@@ -880,7 +958,11 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         make_inline(self.arena, NodeValue::Text(b"<".to_vec()))
     }
 
-    pub fn push_bracket(&mut self, image: bool, inl_text: &'a AstNode<'a>) {
+    pub fn push_bracket(&mut self, image: bool, effect: bool, inl_text: &'a AstNode<'a>) {
+        println!(
+            "xxx image:{:?} effect:{:?} inl:{:?}",
+            image, effect, inl_text
+        );
         let len = self.brackets.len();
         if len > 0 {
             self.brackets[len - 1].bracket_after = true;
@@ -889,8 +971,9 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             previous_delimiter: self.last_delimiter,
             inl_text,
             position: self.pos,
-            image,
+            image: image,
             active: true,
+            effect: effect,
             bracket_after: false,
         });
     }
@@ -909,7 +992,14 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             return Some(make_inline(self.arena, NodeValue::Text(b"]".to_vec())));
         }
 
-        let is_image = self.brackets[brackets_len - 1].image;
+        let bracket = &self.brackets[brackets_len - 1];
+        let is_image = bracket.image;
+        let is_effect = bracket.effect;
+
+        // let is_image = self.brackets[brackets_len - 1].image;
+        // let is_effect = self.brackets[brackets_len - 1].effect;
+
+        println!(">>>>> is_image: {:?} is_effect: {:?}", is_image, is_effect);
         let after_link_text_pos = self.pos;
 
         // Try to find a link destination within parenthesis
@@ -939,7 +1029,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 self.pos = endall + 1;
                 let url = strings::clean_url(url);
                 let title = strings::clean_title(&self.input[starttitle..endtitle]);
-                self.close_bracket_match(is_image, url, title);
+                self.close_bracket_match(is_image, is_effect, url, title);
                 return None;
             } else {
                 self.pos = after_link_text_pos;
@@ -948,11 +1038,14 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
 
         // Try to see if this is a reference link
 
+        println!("MMMMMMM1");
+
         let (mut lab, mut found_label) = match self.link_label() {
             Some(lab) => (lab.to_vec(), true),
             None => (vec![], false),
         };
 
+        println!("MMMMMMM2 :{:?}", found_label);
         if !found_label {
             self.pos = initial_pos;
         }
@@ -962,6 +1055,8 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             found_label = true;
         }
 
+        println!("MMMMMMM3 :{:?}", found_label);
+
         // Need to normalize both to lookup in refmap and to call callback
         lab = strings::normalize_label(&lab);
         let mut reff = if found_label {
@@ -969,7 +1064,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         } else {
             None
         };
-
+        println!("MMMMMMM4 ");
         // Attempt to use the provided broken link callback if a reference cannot be resolved
         if reff.is_none() {
             if let Some(ref mut callback) = self.callback {
@@ -978,9 +1073,10 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         }
 
         if let Some(reff) = reff {
-            self.close_bracket_match(is_image, reff.url.clone(), reff.title);
+            self.close_bracket_match(is_image, is_effect, reff.url.clone(), reff.title);
             return None;
         }
+        println!("MMMMMMM5 ");
 
         let mut text: Option<Vec<u8>> = None;
         if self.options.extension.footnotes
@@ -1009,18 +1105,30 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             }
         }
 
+        println!("MMMMMMM6 ");
         self.brackets.pop();
         self.pos = initial_pos;
         Some(make_inline(self.arena, NodeValue::Text(b"]".to_vec())))
     }
 
-    pub fn close_bracket_match(&mut self, is_image: bool, url: Vec<u8>, title: Vec<u8>) {
-        let nl = NodeLink { url, title };
+    pub fn close_bracket_match(
+        &mut self,
+        is_image: bool,
+        is_effect: bool,
+        url: Vec<u8>,
+        title: Vec<u8>,
+    ) {
         let inl = make_inline(
             self.arena,
             if is_image {
+                let nl = NodeLink { url, title };
                 NodeValue::Image(nl)
+            } else if is_effect {
+                println!(">>>>> EFFECT");
+                let ef = EffectAttr { literal: title };
+                NodeValue::Effect(ef)
             } else {
+                let nl = NodeLink { url, title };
                 NodeValue::Link(nl)
             },
         );
@@ -1038,7 +1146,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         self.brackets.pop();
         brackets_len -= 1;
 
-        if !is_image {
+        if !is_image && !is_effect {
             let mut i = brackets_len as i32 - 1;
             while i >= 0 {
                 if !self.brackets[i as usize].image {
