@@ -162,29 +162,8 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 {
                     self.pos += 7;
 
-                    println!(">>>>>>>>>>>>>>>>>>>.:");
-
-                    // TODO:
-
-                    // for i in 0..6 {
-                    //     let c = self.peek_char_n(i);
-                    //     match c {
-                    //         Some(cc) => {
-                    //             let mut array = [*cc];
-                    //             println!("eee:{:?} {:?}", i, String::from_utf8_lossy(&array));
-                    //         }
-                    //         None => {
-                    //             println!("nil")
-                    //         }
-                    //     }
-                    // }
-
                     self.skip_spaces();
-
                     if self.peek_char() == Some(&(b'[')) {
-                        println!("1>>>>>>>>>>>>>>>>>>>.:");
-                        println!("2>>>>>>>>>>>>>>>>>>>.:");
-
                         self.pos += 1;
                         let inl = make_inline(self.arena, NodeValue::Text(b"::effect[".to_vec()));
                         new_inl = Some(inl);
@@ -959,10 +938,6 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
     }
 
     pub fn push_bracket(&mut self, image: bool, effect: bool, inl_text: &'a AstNode<'a>) {
-        println!(
-            "xxx image:{:?} effect:{:?} inl:{:?}",
-            image, effect, inl_text
-        );
         let len = self.brackets.len();
         if len > 0 {
             self.brackets[len - 1].bracket_after = true;
@@ -1002,8 +977,46 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         println!(">>>>> is_image: {:?} is_effect: {:?}", is_image, is_effect);
         let after_link_text_pos = self.pos;
 
-        // Try to find a link destination within parenthesis
+        if is_effect {
+            let starttitle = self.pos + scanners::spacechars(&self.input[self.pos..]).unwrap_or(0);
+            let mut endflag_pos = 0;
+            while endflag_pos < self.input.len() {
+                let pos_char = self.peek_char_n(endflag_pos);
 
+                if pos_char == Some(&(b']')) {
+                    break;
+                }
+
+                if pos_char == Some(&(b'\n')) {
+                    break;
+                }
+
+                if pos_char == Some(&(b'\r')) {
+                    break;
+                }
+                endflag_pos = endflag_pos + 1;
+            }
+
+            let endtitle = starttitle + endflag_pos;
+
+            println!(
+                "pos: {:?} starttitle: {:?} endtitle: {:?}",
+                self.pos, starttitle, endtitle
+            );
+            if endtitle < self.input.len()
+            /*&& self.input[endall] == b')'*/
+            {
+                let url = vec![];
+                let title = strings::clean_title(&self.input[starttitle..endtitle]);
+
+                println!("title: {:?}", String::from_utf8(title.clone()));
+
+                self.close_bracket_match(false, true, url, title);
+                return None;
+            }
+        }
+
+        // Try to find a link destination within parenthesis
         let mut sps = 0;
         let mut url: &[u8] = &[];
         let mut n: usize = 0;
@@ -1037,15 +1050,12 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         }
 
         // Try to see if this is a reference link
-
-        println!("MMMMMMM1");
-
         let (mut lab, mut found_label) = match self.link_label() {
             Some(lab) => (lab.to_vec(), true),
             None => (vec![], false),
         };
 
-        println!("MMMMMMM2 :{:?}", found_label);
+        // TODO: check
         if !found_label {
             self.pos = initial_pos;
         }
@@ -1055,8 +1065,6 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             found_label = true;
         }
 
-        println!("MMMMMMM3 :{:?}", found_label);
-
         // Need to normalize both to lookup in refmap and to call callback
         lab = strings::normalize_label(&lab);
         let mut reff = if found_label {
@@ -1064,7 +1072,6 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         } else {
             None
         };
-        println!("MMMMMMM4 ");
         // Attempt to use the provided broken link callback if a reference cannot be resolved
         if reff.is_none() {
             if let Some(ref mut callback) = self.callback {
@@ -1076,7 +1083,6 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             self.close_bracket_match(is_image, is_effect, reff.url.clone(), reff.title);
             return None;
         }
-        println!("MMMMMMM5 ");
 
         let mut text: Option<Vec<u8>> = None;
         if self.options.extension.footnotes
@@ -1105,7 +1111,6 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             }
         }
 
-        println!("MMMMMMM6 ");
         self.brackets.pop();
         self.pos = initial_pos;
         Some(make_inline(self.arena, NodeValue::Text(b"]".to_vec())))
@@ -1124,7 +1129,6 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 let nl = NodeLink { url, title };
                 NodeValue::Image(nl)
             } else if is_effect {
-                println!(">>>>> EFFECT");
                 let ef = EffectAttr { literal: title };
                 NodeValue::Effect(ef)
             } else {
