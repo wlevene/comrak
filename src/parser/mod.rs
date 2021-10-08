@@ -733,6 +733,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
 
             self.find_first_nonspace(line);
 
+            println!("xxxxxxxxxNNN:{:?}", ast.value);
             match ast.value {
                 NodeValue::BlockQuote => {
                     if !self.parse_block_quote_prefix(line) {
@@ -822,6 +823,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     &mut matched,
                 )
             {
+                println!("OKOKOKOKOKOK heading start OKOKOKOKOKOK");
                 let heading_startpos = self.first_nonspace;
                 let offset = self.offset;
                 self.advance_offset(line, heading_startpos + matched - offset, false);
@@ -940,7 +942,8 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     let adv = line.len() - 1 - self.offset;
                     self.advance_offset(line, adv, false);
                 }
-            } else if !indented
+            }
+            /*else if !indented
                 && match container.data.borrow().value {
                     NodeValue::Paragraph => {
                         unwrap_into(scanners::effect(&line[self.first_nonspace..]), &mut matched)
@@ -952,7 +955,8 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 // *container = self.add_child(*container, NodeValue::ThematicBreak);
                 // let adv = line.len() - 1 - self.offset;
                 // self.advance_offset(line, adv, false);
-            } else if !indented
+            } */
+            else if !indented
                 && match (&container.data.borrow().value, all_matched) {
                     (&NodeValue::Paragraph, false) => false,
                     _ => unwrap_into(

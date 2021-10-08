@@ -2,6 +2,12 @@ use std::{fmt::Debug, fs::File, io::Read};
 
 use comrak::nodes::NodeKV;
 
+use comrak::{
+    format_html,
+    nodes::{AstNode, NodeCode, NodeValue},
+    parse_document, Arena, ComrakExtensionOptions, ComrakOptions, ComrakRenderOptions,
+};
+
 // Samples used in the README.  Wanna make sure they work as advertised.
 
 extern crate comrak;
@@ -14,6 +20,28 @@ fn readfile(filename: &str) -> String {
     contents
 }
 
+fn comrakOpt() -> ComrakOptions {
+    let mut opts = ComrakOptions {
+        extension: ComrakExtensionOptions {
+            strikethrough: true,
+            tagfilter: true,
+            table: true,
+            autolink: true,
+            tasklist: true,
+            superscript: true,
+            footnotes: true,
+            description_lists: true,
+            ..ComrakExtensionOptions::default()
+        },
+        render: ComrakRenderOptions {
+            hardbreaks: true,
+            ..ComrakRenderOptions::default()
+        },
+        ..ComrakOptions::default()
+    };
+    opts
+}
+
 fn parseSMD() {
     let filename = "/Users/gangwang/root/code/github/comrak/examples/s.md";
     let md_content = readfile(filename);
@@ -21,10 +49,12 @@ fn parseSMD() {
     use comrak::nodes::{AstNode, NodeValue};
     use comrak::{dump_node, format_html, parse_document, Arena, ComrakOptions};
 
+    let mut opts = comrakOpt();
+
     // The returned nodes are created in the supplied Arena, and are bound by its lifetime.
     let arena = Arena::new();
 
-    let root = parse_document(&arena, md_content.as_str(), &ComrakOptions::default());
+    let root = parse_document(&arena, md_content.as_str(), &opts);
 
     fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &F)
     where
@@ -38,6 +68,9 @@ fn parseSMD() {
 
     iter_nodes(root, &|node| {
         match node.data.borrow_mut().value {
+            NodeValue::Heading(ref mut head) => {
+                println!("Head level:{}", head.level);
+            }
             NodeValue::SlideMetaDataBlock(ref mut smd) => {
                 let kv_literal = String::from_utf8_lossy(&smd.literal);
 
@@ -75,6 +108,12 @@ fn parseSMD() {
     });
 
     dump_node(root);
+
+    return;
+    let mut html = vec![];
+    format_html(root, &opts, &mut html).unwrap();
+
+    println!("{}", String::from_utf8(html).unwrap());
 }
 
 fn parseSMD1() {
@@ -139,6 +178,13 @@ fn parseSMD1() {
     });
 
     // dump_node(root);
+    println!("--------------------------------1");
+    let mut html = vec![];
+    let result = format_html(root, &ComrakOptions::default(), &mut html);
+
+    println!("--------------------------------{:?}", result);
+    let str = String::from_utf8_lossy(&html);
+    println!("{:?}", &str);
 }
 
 fn main() {

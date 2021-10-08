@@ -35,10 +35,17 @@ fn is_match(rule: Rule, line: &[u8]) -> bool {
 
 #[inline(always)]
 pub fn atx_heading_start(line: &[u8]) -> Option<usize> {
+    println!("---->> heading start 1");
+
+    println!("eee:{:?} ", String::from_utf8_lossy(line));
+
     if line[0] != b'#' {
         return None;
     }
-    search(Rule::atx_heading_start, line)
+
+    let s = search(Rule::atx_heading_start, line);
+    println!("---->> heading start 2: {:?}", s);
+    return s;
 }
 
 #[inline(always)]
@@ -85,13 +92,13 @@ pub fn close_slide_metadata(line: &[u8]) -> Option<usize> {
     search(Rule::close_slide_metadata, line)
 }
 
-#[inline(always)]
-pub fn effect(line: &[u8]) -> Option<usize> {
-    if line[0] != b':' {
-        return None;
-    }
-    search(Rule::effect, line)
-}
+// #[inline(always)]
+// pub fn effect(line: &[u8]) -> Option<usize> {
+//     if line[0] != b':' {
+//         return None;
+//     }
+//     search(Rule::effect, line)
+// }
 
 #[inline(always)]
 pub fn open_code_fence(line: &[u8]) -> Option<usize> {

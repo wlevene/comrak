@@ -8,9 +8,9 @@ use comrak::{
 };
 
 fn main() {
-    println!("{:?}", get_document_title("# Hello\n"));
-    println!("{:?}", get_document_title("## Hello\n"));
-    println!("{:?}", get_document_title("# `hi` **there**\n"));
+    println!("a {:?}", get_document_title("# Hello\n"));
+    println!("b {:?}", get_document_title("## Hello\n"));
+    println!("c {:?}", get_document_title("# `hi` **there**\n"));
 }
 
 fn get_document_title(document: &str) -> String {

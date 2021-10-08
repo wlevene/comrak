@@ -359,6 +359,7 @@ impl<'o> HtmlFormatter<'o> {
                 }
                 Phase::Post => {
                     debug_assert!(!plain);
+                    println!("Phase::Post ===");
                     self.format_node(node, false)?;
                 }
             }
@@ -382,6 +383,7 @@ impl<'o> HtmlFormatter<'o> {
     }
 
     fn format_node<'a>(&mut self, node: &'a AstNode<'a>, entering: bool) -> io::Result<bool> {
+        println!("Node: {:?}", node.data.borrow().value);
         match node.data.borrow().value {
             NodeValue::Document => (),
             NodeValue::FrontMatter(_) => (),
@@ -442,6 +444,7 @@ impl<'o> HtmlFormatter<'o> {
                 }
             }
             NodeValue::Heading(ref nch) => {
+                print!("format heading node");
                 if entering {
                     self.cr()?;
                     write!(self.output, "<h{}>", nch.level)?;
