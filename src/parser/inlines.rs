@@ -33,6 +33,8 @@ pub struct Subject<'a: 'd, 'r, 'o, 'd, 'i, 'c: 'subj, 'subj> {
     // then give it back when the Subject goes out of scope. Needs to be a mutable reference so we
     // can call the FnMut and let it mutate its captured variables.
     callback: Option<&'subj mut Callback<'c>>,
+
+    last_is_effect: bool,
 }
 
 pub struct Delimiter<'a: 'd, 'd> {
@@ -79,6 +81,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             skip_chars: [false; 256],
             smart_chars: [false; 256],
             callback,
+            last_is_effect: false,
         };
         for &c in &[
             b'\n', b'\r', b'_', b'*', b'"', b'`', b'\\', b'&', b'<', b'[', b']', b'!', b':',
@@ -138,18 +141,18 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 }
             }
             ':' => {
-                for i in 0..8 {
-                    let c = self.peek_char_n(i);
-                    match c {
-                        Some(cc) => {
-                            let mut array = [*cc];
-                            println!("eee:{:?} {:?}", i, String::from_utf8_lossy(&array));
-                        }
-                        None => {
-                            println!("nil")
-                        }
-                    }
-                }
+                // for i in 0..8 {
+                //     let c = self.peek_char_n(i);
+                //     match c {
+                //         Some(cc) => {
+                //             let mut array = [*cc];
+                //             println!("eee:{:?} {:?}", i, String::from_utf8_lossy(&array));
+                //         }
+                //         None => {
+                //             println!("nil")
+                //         }
+                //     }
+                // }
 
                 self.pos += 1;
                 let mut is_effect = false;
@@ -177,14 +180,35 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 }
 
                 if is_effect {
+                    self.last_is_effect = true;
                     self.skip_spaces();
                     if self.peek_char() == Some(&(b'[')) {
                         self.pos += 1;
                         let inl = make_inline(self.arena, NodeValue::Text(b"::effect[".to_vec()));
                         new_inl = Some(inl);
                         // new_inl = Some(self.handle_effect())
-
                         self.push_bracket(false, true, inl);
+
+                        let mut end_flag = 0;
+
+                        while end_flag < self.input.len() {
+                            let pos_char = self.peek_char_n(end_flag);
+                            if pos_char == Some(&(b']')) {
+                                break;
+                            }
+
+                            if pos_char == Some(&(b'\n')) {
+                                break;
+                            }
+
+                            if pos_char == Some(&(b'\r')) {
+                                break;
+                            }
+
+                            end_flag = end_flag + 1;
+                        }
+
+                        self.pos = self.pos + end_flag;
                     } else {
                         new_inl = Some(make_inline(
                             self.arena,
@@ -212,6 +236,9 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                         strings::rtrim(&mut contents);
                     }
 
+                    // if self.last_is_effect {
+                    //     contents = self.input[0..0].to_vec();
+                    // }
                     new_inl = Some(make_inline(self.arena, NodeValue::Text(contents)));
                 }
             }
@@ -981,9 +1008,9 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
     }
 
     pub fn handle_close_bracket(&mut self) -> Option<&'a AstNode<'a>> {
+        self.last_is_effect = false;
         self.pos += 1;
         let initial_pos = self.pos;
-        // println!("self.initial_pos :{:?}", initial_pos);
 
         let brackets_len = self.brackets.len();
         if brackets_len == 0 {
@@ -1175,7 +1202,6 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 let nl = NodeLink { url, title };
                 NodeValue::Image(nl)
             } else if is_effect {
-                // println!("vvvvvvvv:{:?}", String::from_utf8_lossy(&title));
                 let ef = EffectAttr { literal: title };
                 NodeValue::Effect(ef)
             } else {

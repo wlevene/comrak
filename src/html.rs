@@ -122,6 +122,7 @@ struct HtmlFormatter<'o> {
     anchorizer: Anchorizer,
     footnote_ix: u32,
     written_footnote_ix: u32,
+    last_is_effect: bool,
 }
 
 #[rustfmt::skip]
@@ -241,6 +242,7 @@ impl<'o> HtmlFormatter<'o> {
             anchorizer: Anchorizer::new(),
             footnote_ix: 0,
             written_footnote_ix: 0,
+            last_is_effect: false,
         }
     }
 
@@ -443,6 +445,11 @@ impl<'o> HtmlFormatter<'o> {
             }
             NodeValue::Heading(ref nch) => {
                 if entering {
+                    if self.last_is_effect {
+                        self.last_is_effect = false;
+                        self.output.write_all(b"\n</effect>\n");
+                    }
+
                     self.cr()?;
                     write!(self.output, "<h{}>", nch.level)?;
 
@@ -466,14 +473,14 @@ impl<'o> HtmlFormatter<'o> {
             }
             NodeValue::SlideMetaDataBlock(ref smd) => {}
             NodeValue::Effect(ref effect) => {
-                // println!("format_nodexxx:: Effect");
                 if entering {
+                    self.last_is_effect = true;
                     self.cr()?;
                     let mut effcontent = String::from_utf8_lossy(&effect.literal);
                     writeln!(self.output, "<effect {}>", effcontent)?;
-                    // self.output.write_all(b"<effect>");
+                    // self.output.write_all(b"\n</effect>\n");
                 } else {
-                    self.output.write_all(b"</effect>\n")?;
+                    // self.output.write_all(b"</effect>\n")?;
                 }
             }
             NodeValue::KV(ref kv) => {}
@@ -525,6 +532,11 @@ impl<'o> HtmlFormatter<'o> {
                 }
             }
             NodeValue::Paragraph => {
+                if self.last_is_effect {
+                    self.last_is_effect = false;
+                    self.output.write_all(b"\n</effect>\n");
+                }
+
                 let tight = match node
                     .parent()
                     .and_then(|n| n.parent())
