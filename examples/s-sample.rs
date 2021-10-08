@@ -109,7 +109,6 @@ fn parseSMD() {
 
     dump_node(root);
 
-    return;
     let mut html = vec![];
     format_html(root, &opts, &mut html).unwrap();
 
