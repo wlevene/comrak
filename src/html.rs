@@ -359,7 +359,6 @@ impl<'o> HtmlFormatter<'o> {
                 }
                 Phase::Post => {
                     debug_assert!(!plain);
-                    println!("Phase::Post ===");
                     self.format_node(node, false)?;
                 }
             }
@@ -383,7 +382,6 @@ impl<'o> HtmlFormatter<'o> {
     }
 
     fn format_node<'a>(&mut self, node: &'a AstNode<'a>, entering: bool) -> io::Result<bool> {
-        println!("Node: {:?}", node.data.borrow().value);
         match node.data.borrow().value {
             NodeValue::Document => (),
             NodeValue::FrontMatter(_) => (),
@@ -444,7 +442,6 @@ impl<'o> HtmlFormatter<'o> {
                 }
             }
             NodeValue::Heading(ref nch) => {
-                print!("format heading node");
                 if entering {
                     self.cr()?;
                     write!(self.output, "<h{}>", nch.level)?;
@@ -468,7 +465,17 @@ impl<'o> HtmlFormatter<'o> {
                 }
             }
             NodeValue::SlideMetaDataBlock(ref smd) => {}
-            NodeValue::Effect(ref effect) => {}
+            NodeValue::Effect(ref effect) => {
+                // println!("format_nodexxx:: Effect");
+                if entering {
+                    self.cr()?;
+                    let mut effcontent = String::from_utf8_lossy(&effect.literal);
+                    writeln!(self.output, "<effect {}>", effcontent)?;
+                    // self.output.write_all(b"<effect>");
+                } else {
+                    self.output.write_all(b"</effect>\n")?;
+                }
+            }
             NodeValue::KV(ref kv) => {}
             NodeValue::CodeBlock(ref ncb) => {
                 if entering {

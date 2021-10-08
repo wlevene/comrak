@@ -138,20 +138,22 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 }
             }
             ':' => {
-                // for i in 0..8 {
-                //     let c = self.peek_char_n(i);
-                //     match c {
-                //         Some(cc) => {
-                //             let mut array = [*cc];
-                //             println!("eee:{:?} {:?}", i, String::from_utf8_lossy(&array));
-                //         }
-                //         None => {
-                //             println!("nil")
-                //         }
-                //     }
-                // }
+                for i in 0..8 {
+                    let c = self.peek_char_n(i);
+                    match c {
+                        Some(cc) => {
+                            let mut array = [*cc];
+                            println!("eee:{:?} {:?}", i, String::from_utf8_lossy(&array));
+                        }
+                        None => {
+                            println!("nil")
+                        }
+                    }
+                }
 
                 self.pos += 1;
+                let mut is_effect = false;
+
                 if self.peek_char() == Some(&(b':'))
                     && self.peek_char_n(1) == Some(&(b'e'))
                     && self.peek_char_n(2) == Some(&(b'f'))
@@ -161,13 +163,27 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                     && self.peek_char_n(6) == Some(&(b't'))
                 {
                     self.pos += 7;
+                    is_effect = true;
+                } else if self.un_peek_char_n(1) == Some(&(b':'))
+                    && self.peek_char() == Some(&(b'e'))
+                    && self.peek_char_n(1) == Some(&(b'f'))
+                    && self.peek_char_n(2) == Some(&(b'f'))
+                    && self.peek_char_n(3) == Some(&(b'e'))
+                    && self.peek_char_n(4) == Some(&(b'c'))
+                    && self.peek_char_n(5) == Some(&(b't'))
+                {
+                    self.pos += 6;
+                    is_effect = true;
+                }
 
+                if is_effect {
                     self.skip_spaces();
                     if self.peek_char() == Some(&(b'[')) {
                         self.pos += 1;
                         let inl = make_inline(self.arena, NodeValue::Text(b"::effect[".to_vec()));
                         new_inl = Some(inl);
                         // new_inl = Some(self.handle_effect())
+
                         self.push_bracket(false, true, inl);
                     } else {
                         new_inl = Some(make_inline(
@@ -479,6 +495,17 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
             None
         } else {
             let c = &self.input[self.pos + n];
+            assert!(*c > 0);
+            Some(c)
+        }
+    }
+
+    #[inline]
+    fn un_peek_char_n(&self, n: usize) -> Option<&u8> {
+        if (self.pos < n) && (self.pos - n < 0) {
+            None
+        } else {
+            let c = &self.input[self.pos - n];
             assert!(*c > 0);
             Some(c)
         }
@@ -956,6 +983,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
     pub fn handle_close_bracket(&mut self) -> Option<&'a AstNode<'a>> {
         self.pos += 1;
         let initial_pos = self.pos;
+        // println!("self.initial_pos :{:?}", initial_pos);
 
         let brackets_len = self.brackets.len();
         if brackets_len == 0 {
@@ -978,12 +1006,26 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         let after_link_text_pos = self.pos;
 
         if is_effect {
-            let starttitle = self.pos + scanners::spacechars(&self.input[self.pos..]).unwrap_or(0);
-            let mut endflag_pos = 0;
-            while endflag_pos < self.input.len() {
-                let pos_char = self.peek_char_n(endflag_pos);
+            // println!("self.pos :{:?}", self.pos);
 
-                if pos_char == Some(&(b']')) {
+            let endtitle = self.pos - 1; //+ scanners::spacechars(&self.input[self.pos..]).unwrap_or(0);
+            let mut starttitle = 1;
+            while starttitle < self.input.len() {
+                let pos_char = self.un_peek_char_n(starttitle);
+
+                // match pos_char {
+                //     Some(cc) => {
+                //         let mut array = [*cc];
+                //         println!("eee:{:?}", String::from_utf8_lossy(&array));
+                //     }
+                //     None => {
+                //         println!("nil")
+                //     }
+                // }
+
+                // println!("aa starttitle: {:?}", starttitle);
+
+                if pos_char == Some(&(b'[')) {
                     break;
                 }
 
@@ -994,10 +1036,14 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 if pos_char == Some(&(b'\r')) {
                     break;
                 }
-                endflag_pos = endflag_pos + 1;
+
+                starttitle = starttitle + 1;
             }
 
-            let endtitle = starttitle + endflag_pos;
+            /*
+            +2: '[' & ']'
+            */
+            let starttitle = endtitle - starttitle + 2;
 
             println!(
                 "pos: {:?} starttitle: {:?} endtitle: {:?}",
@@ -1009,7 +1055,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 let url = vec![];
                 let title = strings::clean_title(&self.input[starttitle..endtitle]);
 
-                println!("title: {:?}", String::from_utf8(title.clone()));
+                // println!("title: {:?}", String::from_utf8(title.clone()));
 
                 self.close_bracket_match(false, true, url, title);
                 return None;
@@ -1129,6 +1175,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
                 let nl = NodeLink { url, title };
                 NodeValue::Image(nl)
             } else if is_effect {
+                // println!("vvvvvvvv:{:?}", String::from_utf8_lossy(&title));
                 let ef = EffectAttr { literal: title };
                 NodeValue::Effect(ef)
             } else {

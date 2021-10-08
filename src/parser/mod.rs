@@ -732,8 +732,6 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
             let ast = &mut *container.data.borrow_mut();
 
             self.find_first_nonspace(line);
-
-            println!("xxxxxxxxxNNN:{:?}", ast.value);
             match ast.value {
                 NodeValue::BlockQuote => {
                     if !self.parse_block_quote_prefix(line) {
@@ -823,7 +821,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     &mut matched,
                 )
             {
-                println!("OKOKOKOKOKOK heading start OKOKOKOKOKOK");
+                // println!("OKOKOKOKOKOK heading start OKOKOKOKOKOK");
                 let heading_startpos = self.first_nonspace;
                 let offset = self.offset;
                 self.advance_offset(line, heading_startpos + matched - offset, false);
@@ -1826,7 +1824,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                                 _ => {
                                     // Post-process once we are finished joining text nodes
 
-                                    println!("aaaaaaaaa {:?}", String::from_utf8_lossy(root));
+                                    // println!("aaaaaaaaa {:?}", String::from_utf8_lossy(root));
                                     self.postprocess_text_node(n, root);
                                     break;
                                 }

@@ -476,7 +476,7 @@ pub(crate) fn last_child_is_open<'a>(node: &'a AstNode<'a>) -> bool {
 }
 
 pub(crate) fn can_contain_type<'a>(node: &'a AstNode<'a>, child: &NodeValue) -> bool {
-    println!("can_contain_type: {:?} {:?}", node, child);
+    // println!("can_contain_type: {:?} {:?}", node, child);
 
     match *child {
         NodeValue::Document => {

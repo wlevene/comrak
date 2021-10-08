@@ -35,16 +35,11 @@ fn is_match(rule: Rule, line: &[u8]) -> bool {
 
 #[inline(always)]
 pub fn atx_heading_start(line: &[u8]) -> Option<usize> {
-    println!("---->> heading start 1");
-
-    println!("eee:{:?} ", String::from_utf8_lossy(line));
-
     if line[0] != b'#' {
         return None;
     }
 
     let s = search(Rule::atx_heading_start, line);
-    println!("---->> heading start 2: {:?}", s);
     return s;
 }
 
@@ -237,6 +232,5 @@ pub fn table_row_end(line: &[u8]) -> Option<usize> {
 
 #[inline(always)]
 pub fn dangerous_url(line: &[u8]) -> Option<usize> {
-    println!("xxxxxxx dangerous_url dangerous_urldangerous_url");
     search(Rule::dangerous_url, line)
 }
