@@ -1219,7 +1219,41 @@ fn exercise_full_api() {
         ::nodes::NodeValue::FootnoteReference(name) => {
             let _: &Vec<u8> = name;
         }
-        ::nodes::NodeValue::SlideMetaDataBlock(ref smd) => {}
-        ::nodes::NodeValue::KV(ref kv) => {}
+        ::nodes::NodeValue::SlideMetaDataBlock(ref _smd) => {}
+        ::nodes::NodeValue::KV(ref _kv) => {}
+        NodeValue::Document
+        | NodeValue::FrontMatter(_)
+        | NodeValue::BlockQuote
+        | NodeValue::List(_)
+        | NodeValue::Item(_)
+        | NodeValue::DescriptionList
+        | NodeValue::DescriptionItem(_)
+        | NodeValue::DescriptionTerm
+        | NodeValue::DescriptionDetails
+        | NodeValue::SlideMetaDataBlock(_)
+        | NodeValue::KV(_)
+        | NodeValue::CodeBlock(_)
+        | NodeValue::HtmlBlock(_)
+        | NodeValue::Paragraph
+        | NodeValue::Heading(_)
+        | NodeValue::ThematicBreak
+        | NodeValue::FootnoteDefinition(_)
+        | NodeValue::Table(_)
+        | NodeValue::TableRow(_)
+        | NodeValue::TableCell
+        | NodeValue::Text(_)
+        | NodeValue::TaskItem(_)
+        | NodeValue::SoftBreak
+        | NodeValue::LineBreak
+        | NodeValue::Code(_)
+        | NodeValue::HtmlInline(_)
+        | NodeValue::Emph
+        | NodeValue::Strong
+        | NodeValue::Strikethrough
+        | NodeValue::Superscript
+        | NodeValue::Link(_)
+        | NodeValue::Image(_)
+        | NodeValue::FootnoteReference(_)
+        | NodeValue::Effect(_) => todo!(),
     }
 }

@@ -332,7 +332,7 @@ impl<'a, 'o> CommonMarkFormatter<'a, 'o> {
             NodeValue::Superscript => self.format_superscript(),
             NodeValue::Link(ref nl) => return self.format_link(node, nl, entering),
             NodeValue::Image(ref nl) => self.format_image(nl, allow_wrap, entering),
-            NodeValue::Effect(ref effect_attr) => self.format_effect(),
+            NodeValue::Effect(ref _effect_attr) => self.format_effect(),
             NodeValue::Table(..) => self.format_table(entering),
             NodeValue::TableRow(..) => self.format_table_row(entering),
             NodeValue::TableCell => self.format_table_cell(node, entering),

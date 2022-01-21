@@ -415,7 +415,7 @@ impl NodeValue {
         )
     }
 
-    pub(crate) fn is_indent(&self) -> bool {
+    pub(crate) fn _is_indent(&self) -> bool {
         return false;
     }
 }

@@ -3,7 +3,7 @@ use std::{fmt::Debug, fs::File, io::Read};
 use comrak::nodes::NodeKV;
 
 use comrak::{
-    format_html,
+    format_html, format_slide,
     nodes::{AstNode, NodeCode, NodeValue},
     parse_document, Arena, ComrakExtensionOptions, ComrakOptions, ComrakRenderOptions,
 };
@@ -110,7 +110,7 @@ fn parseSMD() {
     dump_node(root);
 
     let mut html = vec![];
-    format_html(root, &opts, &mut html).unwrap();
+    format_slide(root, &opts, &mut html).unwrap();
 
     println!("{}", String::from_utf8(html).unwrap());
 }
@@ -190,4 +190,3 @@ fn main() {
     parseSMD();
     // parseSMD1();
 }
-

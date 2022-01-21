@@ -88,11 +88,15 @@ extern crate twoway;
 extern crate typed_arena;
 extern crate unicode_categories;
 
+extern crate wasm_bindgen;
+use wasm_bindgen::prelude::*;
+
 pub mod arena_tree;
 mod cm;
 mod ctype;
 mod entity;
 mod html;
+mod html_slide_format;
 pub mod nodes;
 mod parser;
 mod scanners;
@@ -103,6 +107,7 @@ mod tests;
 pub use cm::format_document as format_commonmark;
 pub use html::format_document as format_html;
 pub use html::Anchorizer;
+pub use html_slide_format::format_document_slide as format_slide;
 pub use parser::{
     dump_node, parse_document, parse_document_with_broken_link_callback, ComrakExtensionOptions,
     ComrakOptions, ComrakParseOptions, ComrakRenderOptions,
@@ -118,4 +123,75 @@ pub fn markdown_to_html(md: &str, options: &ComrakOptions) -> String {
     let mut s = Vec::new();
     format_html(root, options, &mut s).unwrap();
     String::from_utf8(s).unwrap()
+}
+
+/// Render Markdown to HTML For WebAssmbly.
+///
+/// See the documentation of the crate root for an example.
+// #[wasm_bindgen]
+// pub fn markdown_to_html_wasm_bindgen(md: &str) -> String {
+//     let opt = comrakOpt();
+//     let arena = Arena::new();
+//     let root = parse_document(&arena, md, opt);
+//     let mut s = Vec::new();
+//     format_html(root, options, &mut s).unwrap();
+//     String::from_utf8(s).unwrap()
+// }
+
+// #[wasm_bindgen(js_namespace = console)]
+// pub fn log(s: &str);
+
+// #[wasm_bindgen(js_namespace = console, js_name = log)]
+// pub fn log_u32(a: u32);
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    pub fn log(s: &str);
+    #[wasm_bindgen(js_namespace = console)]
+    pub fn info(s: &str);
+    #[wasm_bindgen(js_namespace = console)]
+    pub fn warn(s: &str);
+    #[wasm_bindgen(js_namespace = console)]
+    pub fn error(s: &str);
+
+    fn alert(s: &str);
+}
+
+/// Test For WebAssmbly 111.
+///
+/// See the documentation of the crate root for an example.
+#[wasm_bindgen]
+pub fn greet(name: &str) {
+    alert(&format!("Hello, {}!", name));
+}
+
+/// Test For WebAssmbly.
+///
+/// See the documentation of the crate root for an example.
+#[wasm_bindgen]
+pub fn test_echo(a: i32) -> i32 {
+    a + 1
+}
+
+fn comrak_opt() -> ComrakOptions {
+    let opts = ComrakOptions {
+        extension: ComrakExtensionOptions {
+            strikethrough: true,
+            tagfilter: true,
+            table: true,
+            autolink: true,
+            tasklist: true,
+            superscript: true,
+            footnotes: true,
+            description_lists: true,
+            ..ComrakExtensionOptions::default()
+        },
+        render: ComrakRenderOptions {
+            hardbreaks: true,
+            ..ComrakRenderOptions::default()
+        },
+        ..ComrakOptions::default()
+    };
+    opts
 }

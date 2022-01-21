@@ -529,7 +529,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
 
     #[inline]
     fn un_peek_char_n(&self, n: usize) -> Option<&u8> {
-        if (self.pos < n) && (self.pos - n < 0) {
+        if self.pos < n {
             None
         } else {
             let c = &self.input[self.pos - n];
