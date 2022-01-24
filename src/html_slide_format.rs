@@ -14,9 +14,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SlideHtmlDom {
-    meta: HashMap<String, String>,
     front: SlideSectionHtmlDom,
-    foot: SlideSectionHtmlDom,
     content: Vec<SlideSectionHtmlDom>,
     format_level: u8,       // 0:cover  -1 footer 标记format时 当前在那一页
     format_content: String, // 当前页面的内容
@@ -32,15 +30,11 @@ struct SlideSectionHtmlDom {
 impl SlideHtmlDom {
     pub fn new() -> Self {
         SlideHtmlDom {
-            meta: HashMap::new(),
             front: SlideSectionHtmlDom {
                 meta: HashMap::new(),
                 content: String::new(),
             },
-            foot: SlideSectionHtmlDom {
-                meta: HashMap::new(),
-                content: String::new(),
-            },
+
             content: Vec::new(),
             format_level: 0,
             format_content: String::new(),
@@ -74,6 +68,8 @@ pub fn format_document_slide<'a>(
 
     let mut f = HtmlSlideFormatter::new(options, &mut writer);
     f.format(root, &mut jsonDom, false)?;
+    f.setupSlideDomContent(root, &mut jsonDom);
+
     // if f.footnote_ix > 0 {
     //     f.output.write_all(b"</ol>\n</section>\n")?;
     // }
@@ -427,18 +423,24 @@ impl<'o> HtmlSlideFormatter<'o> {
         }
     }
 
-    fn format_peek_sibling_node_type<'a>(
-        &mut self,
-        node: &'a AstNode<'a>,
-    ) -> Option<&'a AstNode<'a>> {
-        let next_sibling = node.next_sibling();
-        if let Some(next_sibling) = next_sibling {
-            Some(node)
-        } else {
-            None
+    fn setupSlideDomContent<'a>(&mut self, node: &'a AstNode<'a>, jsonDom: &mut SlideHtmlDom) {
+        if jsonDom.format_level == 0 {
+            return;
         }
-    }
 
+        if jsonDom.format_level == 1 {
+            jsonDom.front.content = jsonDom.format_content.clone();
+            jsonDom.front.meta = jsonDom.format_meta.clone();
+        } else if jsonDom.format_level > 1 {
+            let mut sectionDom = SlideSectionHtmlDom::new();
+            sectionDom.content = jsonDom.format_content.clone();
+            sectionDom.meta = jsonDom.format_meta.clone();
+            jsonDom.content.push(sectionDom);
+        }
+
+        jsonDom.format_meta.clear();
+        jsonDom.format_content.clear();
+    }
     fn format_node<'a>(
         &mut self,
         node: &'a AstNode<'a>,
@@ -493,7 +495,7 @@ impl<'o> HtmlSlideFormatter<'o> {
             NodeValue::DescriptionItem(..) => (),
             NodeValue::DescriptionTerm => {
                 if entering {
-                    jsonDom.format_content = format!("{}{}", jsonDom.format_content, "\n");
+                    // jsonDom.format_content = format!("{}{}", jsonDom.format_content, "\n");
                     self.output.write_all(b"<dt>")?;
                 } else {
                     self.output.write_all(b"</dt>\n")?;
@@ -501,7 +503,7 @@ impl<'o> HtmlSlideFormatter<'o> {
             }
             NodeValue::DescriptionDetails => {
                 if entering {
-                    jsonDom.format_content = format!("{}{}", jsonDom.format_content, "\n");
+                    // jsonDom.format_content = format!("{}{}", jsonDom.format_content, "\n");
                     self.output.write_all(b"<dd>")?;
                 } else {
                     self.output.write_all(b"</dd>\n")?;
@@ -518,29 +520,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                         );
                     }
 
-                    if jsonDom.format_level == 1 {
-                        jsonDom.meta = meta.clone();
-                        jsonDom.front.meta = meta.clone();
-                    } else {
-                        let index: usize = jsonDom.format_level as usize;
-
-                        println!(" index: {}", index);
-                        println!(" meta: {:?}", meta);
-                        println!(" jsonDom.content: {:?}", jsonDom.content.len());
-
-                        match (jsonDom.content.get(index - 2)) {
-                            Some(section) => {
-                                let mut new_setction = SlideSectionHtmlDom::new();
-                                new_setction.meta = meta.clone();
-                                new_setction.content = section.content.clone();
-                                println!(" new_setction: {:?}", new_setction);
-                                std::mem::replace(&mut jsonDom.content[index - 2], new_setction);
-                            }
-                            None => {}
-                        };
-
-                        meta.clear();
-                    }
+                    jsonDom.format_meta = meta.clone();
                 }
             }
             NodeValue::Effect(ref effect) => {
@@ -557,18 +537,12 @@ impl<'o> HtmlSlideFormatter<'o> {
             NodeValue::KV(ref _kv) => {}
             NodeValue::Heading(ref nch) => {
                 if entering {
+                    self.setupSlideDomContent(node, jsonDom);
+
                     if nch.level == 1 {
                         jsonDom.format_content = String::new();
                         jsonDom.format_content = format!("{}", "# ");
                     } else if nch.level == 2 {
-                        let mut sectionDom = SlideSectionHtmlDom::new();
-                        sectionDom.content = jsonDom.format_content.clone();
-                        sectionDom.meta = jsonDom.format_meta.clone();
-                        jsonDom.content.push(sectionDom);
-
-                        println!(" 1111 jsonDom.content: {:?}", jsonDom.content.len());
-
-                        jsonDom.format_content = String::new();
                         jsonDom.format_content = format!("{}", "## ");
                     }
 

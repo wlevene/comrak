@@ -189,6 +189,6 @@ fn parseSMD1() {
 }
 
 fn main() {
-    // parseSMD();
+    // parseSMD(theme);
     parseSMD1();
 }
