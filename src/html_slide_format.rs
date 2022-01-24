@@ -509,7 +509,6 @@ impl<'o> HtmlSlideFormatter<'o> {
             }
             NodeValue::SlideMetaDataBlock(ref smd) => {
                 if entering {
-                    println!(" 2222 SlideMetaDataBlock");
                     let mut meta: HashMap<String, String> = HashMap::new();
 
                     for kv in &smd.metadatas {
@@ -558,7 +557,6 @@ impl<'o> HtmlSlideFormatter<'o> {
             NodeValue::KV(ref _kv) => {}
             NodeValue::Heading(ref nch) => {
                 if entering {
-                    println!(" 1111 HEADER");
                     if nch.level == 1 {
                         jsonDom.format_content = String::new();
                         jsonDom.format_content = format!("{}", "# ");
@@ -773,6 +771,12 @@ impl<'o> HtmlSlideFormatter<'o> {
                     if self.options.render.escape {
                         self.escape(&literal)?;
                     } else if !self.options.render.unsafe_ {
+                        jsonDom.format_content = format!(
+                            "{} {}",
+                            jsonDom.format_content,
+                            String::from_utf8_lossy(literal)
+                        );
+
                         self.output.write_all(b"<!-- raw HTML omitted -->")?;
                     } else if self.options.extension.tagfilter && tagfilter(literal) {
                         self.output.write_all(b"&lt;")?;
