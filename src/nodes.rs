@@ -4,7 +4,7 @@ use arena_tree::Node;
 use std::cell::RefCell;
 
 /// The core AST node enum.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NodeValue {
     /// The root of every CommonMark document.  Contains **blocks**.
     Document,
@@ -155,7 +155,7 @@ pub enum NodeValue {
 }
 
 /// Alignment of a single table cell.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TableAlignment {
     /// Cell content is unaligned.
     None,
@@ -171,7 +171,7 @@ pub enum TableAlignment {
 }
 
 /// An inline [code span](https://github.github.com/gfm/#code-spans).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NodeCode {
     /// The URL for the link destination or image source.
     pub num_backticks: usize,
@@ -184,7 +184,7 @@ pub struct NodeCode {
 }
 
 /// The details of a link's destination, or an image's source.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NodeKV {
     /// key
     pub key: Vec<u8>,
@@ -194,7 +194,7 @@ pub struct NodeKV {
 }
 
 /// The details of a link's destination, or an image's source.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NodeLink {
     /// The URL for the link destination or image source.
     pub url: Vec<u8>,
@@ -207,7 +207,7 @@ pub struct NodeLink {
 }
 
 /// The metadata of a list; the kind of list, the delimiter used and so on.
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct NodeList {
     /// The kind of list (bullet (unordered) or ordered).
     pub list_type: ListType,
@@ -230,7 +230,7 @@ pub struct NodeList {
 }
 
 /// The metadata of a description list
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct NodeDescriptionItem {
     pub(crate) marker_offset: usize,
     pub(crate) padding: usize,
@@ -269,7 +269,7 @@ impl Default for ListDelimType {
 }
 
 /// The metadata and data of a code block (fenced or indented).
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct NodeSlideMetaDataBlock {
     /// Whether the code block is fenced.
     pub fenced: bool,
@@ -296,7 +296,7 @@ pub struct NodeSlideMetaDataBlock {
 }
 
 /// The metadata and data of a code block (fenced or indented).
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct EffectAttr {
     /// The literal contents of the code block.  As the contents are not interpreted as Markdown at
     /// all, they are contained within this structure, rather than inserted into a child inline of
@@ -307,7 +307,7 @@ pub struct EffectAttr {
 }
 
 /// The metadata and data of a code block (fenced or indented).
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct NodeCodeBlock {
     /// Whether the code block is fenced.
     pub fenced: bool,
@@ -331,7 +331,7 @@ pub struct NodeCodeBlock {
 }
 
 /// The metadata of a heading.
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct NodeHeading {
     /// The level of the header; from 1 to 6 for ATX headings, 1 or 2 for setext headings.
     pub level: u32,
@@ -341,7 +341,7 @@ pub struct NodeHeading {
 }
 
 /// The metadata of an included HTML block.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct NodeHtmlBlock {
     pub(crate) block_type: u8,
 

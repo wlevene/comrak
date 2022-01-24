@@ -18,7 +18,9 @@ struct SlideHtmlDom {
     front: SlideSectionHtmlDom,
     foot: SlideSectionHtmlDom,
     content: Vec<SlideSectionHtmlDom>,
-    format_index: u8, // 0:cover  -1 footer 标记format时 当前在那一页
+    format_level: u8,       // 0:cover  -1 footer 标记format时 当前在那一页
+    format_content: String, // 当前页面的内容
+    format_meta: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -40,7 +42,9 @@ impl SlideHtmlDom {
                 content: String::new(),
             },
             content: Vec::new(),
-            format_index: 0,
+            format_level: 0,
+            format_content: String::new(),
+            format_meta: HashMap::new(),
         }
     }
 }
@@ -423,6 +427,18 @@ impl<'o> HtmlSlideFormatter<'o> {
         }
     }
 
+    fn format_peek_sibling_node_type<'a>(
+        &mut self,
+        node: &'a AstNode<'a>,
+    ) -> Option<&'a AstNode<'a>> {
+        let next_sibling = node.next_sibling();
+        if let Some(next_sibling) = next_sibling {
+            Some(node)
+        } else {
+            None
+        }
+    }
+
     fn format_node<'a>(
         &mut self,
         node: &'a AstNode<'a>,
@@ -488,12 +504,53 @@ impl<'o> HtmlSlideFormatter<'o> {
                     self.output.write_all(b"</dd>\n")?;
                 }
             }
+            NodeValue::SlideMetaDataBlock(ref smd) => {
+                jsonDom.format_meta = HashMap::new();
+
+                for kv in &smd.metadatas {
+                    jsonDom.format_meta.insert(
+                        String::from_utf8_lossy(&kv.key).to_string(),
+                        String::from_utf8_lossy(&kv.value).to_string(),
+                    );
+                }
+
+                if (jsonDom.format_level == 0) {
+                    jsonDom.meta = jsonDom.format_meta.clone();
+                } else {
+                }
+            }
+            NodeValue::Effect(ref effect) => {
+                if entering {
+                    self.last_is_effect = true;
+                    self.cr()?;
+                    let effcontent = String::from_utf8_lossy(&effect.literal);
+                    writeln!(self.output, "<effect {}>", effcontent)?;
+                    // self.output.write_all(b"\n</effect>\n");
+                } else {
+                    // self.output.write_all(b"</effect>\n")?;
+                }
+            }
+            NodeValue::KV(ref _kv) => {}
             NodeValue::Heading(ref nch) => {
                 if entering {
                     if nch.level == 1 {
-                        jsonDom.format_index = 0;
+                        jsonDom.format_level = 0;
+                        jsonDom.format_content = String::new();
+                        jsonDom.format_content = format!("{}", "# ");
                     } else if nch.level == 2 {
-                        jsonDom.format_index += 1;
+                        jsonDom.format_level += 1;
+
+                        if jsonDom.format_level == 1 {
+                            jsonDom.front.content = jsonDom.format_content.clone()
+                        } else {
+                            let mut sectionDom = SlideSectionHtmlDom::new();
+                            sectionDom.content = jsonDom.format_content.clone();
+                            sectionDom.meta = jsonDom.format_meta.clone();
+                            jsonDom.content.push(sectionDom);
+                        }
+
+                        jsonDom.format_content = String::new();
+                        jsonDom.format_content = format!("{}", "## ");
                     }
 
                     if self.last_is_effect {
@@ -522,28 +579,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                     writeln!(self.output, "</h{}>tttt", nch.level)?;
                 }
             }
-            NodeValue::SlideMetaDataBlock(ref smd) => {
-                if (jsonDom.format_index == 0) {
-                    for kv in &smd.metadatas {
-                        jsonDom.meta.insert(
-                            String::from_utf8_lossy(&kv.key).to_string(),
-                            String::from_utf8_lossy(&kv.value).to_string(),
-                        );
-                    }
-                }
-            }
-            NodeValue::Effect(ref effect) => {
-                if entering {
-                    self.last_is_effect = true;
-                    self.cr()?;
-                    let effcontent = String::from_utf8_lossy(&effect.literal);
-                    writeln!(self.output, "<effect {}>", effcontent)?;
-                    // self.output.write_all(b"\n</effect>\n");
-                } else {
-                    // self.output.write_all(b"</effect>\n")?;
-                }
-            }
-            NodeValue::KV(ref _kv) => {}
+
             NodeValue::CodeBlock(ref ncb) => {
                 if entering {
                     self.cr()?;
@@ -591,7 +627,71 @@ impl<'o> HtmlSlideFormatter<'o> {
                     self.output.write_all(b"<hr />\n")?;
                 }
             }
+            NodeValue::Text(ref literal) => {
+                if entering {
+                    self.escape(literal)?;
+
+                    // match node.next_sibling() {
+                    //     Some(sibling_node) => match sibling_node.data.borrow().value {
+                    //         NodeValue::Link(..) => {
+                    //             println!("{:?}", sibling_node);
+
+                    //             jsonDom.format_content = format!(
+                    //                 "{}[{}]",
+                    //                 jsonDom.format_content,
+                    //                 String::from_utf8_lossy(literal)
+                    //             );
+                    //         }
+                    //         _ => {
+                    //             jsonDom.format_content = format!(
+                    //                 "{}{}",
+                    //                 jsonDom.format_content,
+                    //                 String::from_utf8_lossy(literal)
+                    //             );
+                    //         }
+                    //     },
+                    //     None => {
+                    //         jsonDom.format_content = format!(
+                    //             "{}{}",
+                    //             jsonDom.format_content,
+                    //             String::from_utf8_lossy(literal)
+                    //         );
+                    //     }
+                    // }
+                } else {
+                    println!("MMMMM {}", String::from_utf8_lossy(literal));
+                    match node.parent() {
+                        Some(parent) => match parent.data.borrow().value {
+                            NodeValue::Link(..) => {
+                                jsonDom.format_content = format!(
+                                    "{}[{}]",
+                                    jsonDom.format_content,
+                                    String::from_utf8_lossy(literal)
+                                );
+                            }
+                            _ => {
+                                jsonDom.format_content = format!(
+                                    "{}{}",
+                                    jsonDom.format_content,
+                                    String::from_utf8_lossy(literal)
+                                );
+                            }
+                        },
+                        None => {
+                            jsonDom.format_content = format!(
+                                "{}{}",
+                                jsonDom.format_content,
+                                String::from_utf8_lossy(literal)
+                            );
+                        }
+                    }
+                }
+            }
             NodeValue::Paragraph => {
+                if entering == false {
+                    jsonDom.format_content = format!("{}{}", jsonDom.format_content, "\n");
+                }
+
                 if self.last_is_effect {
                     self.last_is_effect = false;
                     self.output.write_all(b"\n</effect>\n");
@@ -629,18 +729,17 @@ impl<'o> HtmlSlideFormatter<'o> {
                     }
                 }
             }
-            NodeValue::Text(ref literal) => {
-                if entering {
-                    self.escape(literal)?;
-                }
-            }
+
             NodeValue::LineBreak => {
                 if entering {
+                    jsonDom.format_content = format!("{}{}", jsonDom.format_content, "\n");
                     self.output.write_all(b"<br />\n")?;
                 }
             }
             NodeValue::SoftBreak => {
                 if entering {
+                    jsonDom.format_content = format!("{}{}", jsonDom.format_content, "\n");
+
                     if self.options.render.hardbreaks {
                         self.output.write_all(b"<br />\n")?;
                     } else {
@@ -710,6 +809,22 @@ impl<'o> HtmlSlideFormatter<'o> {
                     self.output.write_all(b"\">")?;
                 } else {
                     self.output.write_all(b"</a>")?;
+
+                    if !nl.title.is_empty() {
+                        jsonDom.format_content = format!(
+                            "{}[{}]",
+                            jsonDom.format_content,
+                            String::from_utf8_lossy(&nl.title)
+                        );
+                    }
+
+                    if self.options.render.unsafe_ || !dangerous_url(&nl.url) {
+                        jsonDom.format_content = format!(
+                            "{}({})",
+                            jsonDom.format_content,
+                            String::from_utf8_lossy(&nl.url)
+                        );
+                    }
                 }
             }
             NodeValue::Image(ref nl) => {
@@ -726,6 +841,22 @@ impl<'o> HtmlSlideFormatter<'o> {
                         self.escape(&nl.title)?;
                     }
                     self.output.write_all(b"\" />")?;
+
+                    if !nl.title.is_empty() {
+                        jsonDom.format_content = format!(
+                            "{}[{}]",
+                            jsonDom.format_content,
+                            String::from_utf8_lossy(&nl.title)
+                        );
+                    }
+
+                    if self.options.render.unsafe_ || !dangerous_url(&nl.url) {
+                        jsonDom.format_content = format!(
+                            "{}({})",
+                            jsonDom.format_content,
+                            String::from_utf8_lossy(&nl.url)
+                        );
+                    }
                 }
             }
             NodeValue::Table(..) => {
