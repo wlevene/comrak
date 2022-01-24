@@ -3,11 +3,56 @@ use nodes::{AstNode, ListType, NodeCode, NodeValue, TableAlignment};
 use parser::ComrakOptions;
 use regex::Regex;
 use scanners;
+
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 use std::str;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SlideHtmlDom {
+    meta: HashMap<String, String>,
+    front: SlideSectionHtmlDom,
+    foot: SlideSectionHtmlDom,
+    content: Vec<SlideSectionHtmlDom>,
+    format_index: u8, // 0:cover  -1 footer 标记format时 当前在那一页
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SlideSectionHtmlDom {
+    meta: HashMap<String, String>,
+    content: String,
+}
+
+impl SlideHtmlDom {
+    pub fn new() -> Self {
+        SlideHtmlDom {
+            meta: HashMap::new(),
+            front: SlideSectionHtmlDom {
+                meta: HashMap::new(),
+                content: String::new(),
+            },
+            foot: SlideSectionHtmlDom {
+                meta: HashMap::new(),
+                content: String::new(),
+            },
+            content: Vec::new(),
+            format_index: 0,
+        }
+    }
+}
+
+impl SlideSectionHtmlDom {
+    pub fn new() -> Self {
+        SlideSectionHtmlDom {
+            meta: HashMap::new(),
+            content: String::new(),
+        }
+    }
+}
 
 /// Formats an AST as HTML, modified by the given options.
 pub fn format_document_slide<'a>(
@@ -21,11 +66,16 @@ pub fn format_document_slide<'a>(
         output,
         last_was_lf: Cell::new(true),
     };
+    let mut jsonDom = SlideHtmlDom::new();
+
     let mut f = HtmlSlideFormatter::new(options, &mut writer);
-    f.format(root, false)?;
-    if f.footnote_ix > 0 {
-        f.output.write_all(b"</ol>\n</section>\n")?;
-    }
+    f.format(root, &mut jsonDom, false)?;
+    // if f.footnote_ix > 0 {
+    //     f.output.write_all(b"</ol>\n</section>\n")?;
+    // }
+
+    let serialized = serde_json::to_string(&jsonDom).unwrap();
+    println!("serialized = {}", serialized);
     Ok(())
 }
 
@@ -304,7 +354,12 @@ impl<'o> HtmlSlideFormatter<'o> {
         Ok(())
     }
 
-    fn format<'a>(&mut self, node: &'a AstNode<'a>, plain: bool) -> io::Result<()> {
+    fn format<'a>(
+        &mut self,
+        node: &'a AstNode<'a>,
+        jsonDom: &mut SlideHtmlDom,
+        plain: bool,
+    ) -> io::Result<()> {
         // Traverse the AST iteratively using a work stack, with pre- and
         // post-child-traversal phases. During pre-order traversal render the
         // opening tags, then push the node back onto the stack for the
@@ -315,6 +370,7 @@ impl<'o> HtmlSlideFormatter<'o> {
             Pre,
             Post,
         }
+
         let mut stack = vec![(node, plain, Phase::Pre)];
 
         while let Some((node, plain, phase)) = stack.pop() {
@@ -336,7 +392,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                         new_plain = plain;
                     } else {
                         stack.push((node, false, Phase::Post));
-                        new_plain = self.format_node(node, true)?;
+                        new_plain = self.format_node(node, jsonDom, true)?;
                     }
 
                     for ch in node.reverse_children() {
@@ -345,7 +401,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                 }
                 Phase::Post => {
                     debug_assert!(!plain);
-                    self.format_node(node, false)?;
+                    self.format_node(node, jsonDom, false)?;
                 }
             }
         }
@@ -367,7 +423,438 @@ impl<'o> HtmlSlideFormatter<'o> {
         }
     }
 
-    fn format_node<'a>(&mut self, node: &'a AstNode<'a>, entering: bool) -> io::Result<bool> {
+    fn format_node<'a>(
+        &mut self,
+        node: &'a AstNode<'a>,
+        jsonDom: &mut SlideHtmlDom,
+        entering: bool,
+    ) -> io::Result<bool> {
+        match node.data.borrow().value {
+            NodeValue::Document => (),
+            NodeValue::FrontMatter(_) => (),
+            NodeValue::BlockQuote => {
+                if entering {
+                    self.cr()?;
+                    self.output.write_all(b"<blockquote>\n")?;
+                } else {
+                    self.cr()?;
+                    self.output.write_all(b"</blockquote>\n")?;
+                }
+            }
+            NodeValue::List(ref nl) => {
+                if entering {
+                    self.cr()?;
+                    if nl.list_type == ListType::Bullet {
+                        self.output.write_all(b"<ul>\n")?;
+                    } else if nl.start == 1 {
+                        self.output.write_all(b"<ol>\n")?;
+                    } else {
+                        writeln!(self.output, "<ol start=\"{}\">", nl.start)?;
+                    }
+                } else if nl.list_type == ListType::Bullet {
+                    self.output.write_all(b"</ul>\n")?;
+                } else {
+                    self.output.write_all(b"</ol>\n")?;
+                }
+            }
+            NodeValue::Item(..) => {
+                if entering {
+                    self.cr()?;
+                    self.output.write_all(b"<li>")?;
+                } else {
+                    self.output.write_all(b"</li>\n")?;
+                }
+            }
+            NodeValue::DescriptionList => {
+                if entering {
+                    self.cr()?;
+                    self.output.write_all(b"<dl>")?;
+                } else {
+                    self.output.write_all(b"</dl>\n")?;
+                }
+            }
+            NodeValue::DescriptionItem(..) => (),
+            NodeValue::DescriptionTerm => {
+                if entering {
+                    self.output.write_all(b"<dt>")?;
+                } else {
+                    self.output.write_all(b"</dt>\n")?;
+                }
+            }
+            NodeValue::DescriptionDetails => {
+                if entering {
+                    self.output.write_all(b"<dd>")?;
+                } else {
+                    self.output.write_all(b"</dd>\n")?;
+                }
+            }
+            NodeValue::Heading(ref nch) => {
+                if entering {
+                    if nch.level == 1 {
+                        jsonDom.format_index = 0;
+                    } else if nch.level == 2 {
+                        jsonDom.format_index += 1;
+                    }
+
+                    if self.last_is_effect {
+                        self.last_is_effect = false;
+                        self.output.write_all(b"\n</effect>\n");
+                    }
+
+                    self.cr()?;
+                    write!(self.output, "<h{}>", nch.level)?;
+
+                    if let Some(ref prefix) = self.options.extension.header_ids {
+                        let mut text_content = Vec::with_capacity(20);
+                        self.collect_text(node, &mut text_content);
+
+                        let mut id = String::from_utf8(text_content).unwrap();
+                        id = self.anchorizer.anchorize(id);
+                        write!(
+                            self.output,
+                            "<a href=\"#{}\" aria-hidden=\"true\" class=\"anchor\" id=\"{}{}\"></a>",
+                            id,
+                            prefix,
+                            id
+                        )?;
+                    }
+                } else {
+                    writeln!(self.output, "</h{}>tttt", nch.level)?;
+                }
+            }
+            NodeValue::SlideMetaDataBlock(ref smd) => {
+                if (jsonDom.format_index == 0) {
+                    for kv in &smd.metadatas {
+                        jsonDom.meta.insert(
+                            String::from_utf8_lossy(&kv.key).to_string(),
+                            String::from_utf8_lossy(&kv.value).to_string(),
+                        );
+                    }
+                }
+            }
+            NodeValue::Effect(ref effect) => {
+                if entering {
+                    self.last_is_effect = true;
+                    self.cr()?;
+                    let effcontent = String::from_utf8_lossy(&effect.literal);
+                    writeln!(self.output, "<effect {}>", effcontent)?;
+                    // self.output.write_all(b"\n</effect>\n");
+                } else {
+                    // self.output.write_all(b"</effect>\n")?;
+                }
+            }
+            NodeValue::KV(ref _kv) => {}
+            NodeValue::CodeBlock(ref ncb) => {
+                if entering {
+                    self.cr()?;
+
+                    if ncb.info.is_empty() {
+                        self.output.write_all(b"<pre><code>")?;
+                    } else {
+                        let mut first_tag = 0;
+                        while first_tag < ncb.info.len() && !isspace(ncb.info[first_tag]) {
+                            first_tag += 1;
+                        }
+
+                        if self.options.render.github_pre_lang {
+                            self.output.write_all(b"<pre lang=\"")?;
+                            self.escape(&ncb.info[..first_tag])?;
+                            self.output.write_all(b"\"><code>")?;
+                        } else {
+                            self.output.write_all(b"<pre><code class=\"language-")?;
+                            self.escape(&ncb.info[..first_tag])?;
+                            self.output.write_all(b"\">")?;
+                        }
+                    }
+                    self.escape(&ncb.literal)?;
+                    self.output.write_all(b"</code></pre>\n")?;
+                }
+            }
+            NodeValue::HtmlBlock(ref nhb) => {
+                if entering {
+                    self.cr()?;
+                    if self.options.render.escape {
+                        self.escape(&nhb.literal)?;
+                    } else if !self.options.render.unsafe_ {
+                        self.output.write_all(b"<!-- raw HTML omitted -->")?;
+                    } else if self.options.extension.tagfilter {
+                        tagfilter_block(&nhb.literal, &mut self.output)?;
+                    } else {
+                        self.output.write_all(&nhb.literal)?;
+                    }
+                    self.cr()?;
+                }
+            }
+            NodeValue::ThematicBreak => {
+                if entering {
+                    self.cr()?;
+                    self.output.write_all(b"<hr />\n")?;
+                }
+            }
+            NodeValue::Paragraph => {
+                if self.last_is_effect {
+                    self.last_is_effect = false;
+                    self.output.write_all(b"\n</effect>\n");
+                }
+
+                let tight = match node
+                    .parent()
+                    .and_then(|n| n.parent())
+                    .map(|n| n.data.borrow().value.clone())
+                {
+                    Some(NodeValue::List(nl)) => nl.tight,
+                    _ => false,
+                };
+
+                let tight = tight
+                    || matches!(
+                        node.parent().map(|n| n.data.borrow().value.clone()),
+                        Some(NodeValue::DescriptionTerm)
+                    );
+
+                if !tight {
+                    if entering {
+                        self.cr()?;
+                        self.output.write_all(b"<p>")?;
+                    } else {
+                        if matches!(
+                            node.parent().unwrap().data.borrow().value,
+                            NodeValue::FootnoteDefinition(..)
+                        ) && node.next_sibling().is_none()
+                        {
+                            self.output.write_all(b" ")?;
+                            self.put_footnote_backref()?;
+                        }
+                        self.output.write_all(b"</p>\n")?;
+                    }
+                }
+            }
+            NodeValue::Text(ref literal) => {
+                if entering {
+                    self.escape(literal)?;
+                }
+            }
+            NodeValue::LineBreak => {
+                if entering {
+                    self.output.write_all(b"<br />\n")?;
+                }
+            }
+            NodeValue::SoftBreak => {
+                if entering {
+                    if self.options.render.hardbreaks {
+                        self.output.write_all(b"<br />\n")?;
+                    } else {
+                        self.output.write_all(b"\n")?;
+                    }
+                }
+            }
+            NodeValue::Code(NodeCode { ref literal, .. }) => {
+                if entering {
+                    self.output.write_all(b"<code>")?;
+                    self.escape(literal)?;
+                    self.output.write_all(b"</code>")?;
+                }
+            }
+            NodeValue::HtmlInline(ref literal) => {
+                if entering {
+                    if self.options.render.escape {
+                        self.escape(&literal)?;
+                    } else if !self.options.render.unsafe_ {
+                        self.output.write_all(b"<!-- raw HTML omitted -->")?;
+                    } else if self.options.extension.tagfilter && tagfilter(literal) {
+                        self.output.write_all(b"&lt;")?;
+                        self.output.write_all(&literal[1..])?;
+                    } else {
+                        self.output.write_all(literal)?;
+                    }
+                }
+            }
+            NodeValue::Strong => {
+                if entering {
+                    self.output.write_all(b"<strong>")?;
+                } else {
+                    self.output.write_all(b"</strong>")?;
+                }
+            }
+            NodeValue::Emph => {
+                if entering {
+                    self.output.write_all(b"<em>")?;
+                } else {
+                    self.output.write_all(b"</em>")?;
+                }
+            }
+            NodeValue::Strikethrough => {
+                if entering {
+                    self.output.write_all(b"<del>")?;
+                } else {
+                    self.output.write_all(b"</del>")?;
+                }
+            }
+            NodeValue::Superscript => {
+                if entering {
+                    self.output.write_all(b"<sup>")?;
+                } else {
+                    self.output.write_all(b"</sup>")?;
+                }
+            }
+            NodeValue::Link(ref nl) => {
+                if entering {
+                    self.output.write_all(b"<a href=\"")?;
+                    if self.options.render.unsafe_ || !dangerous_url(&nl.url) {
+                        self.escape_href(&nl.url)?;
+                    }
+                    if !nl.title.is_empty() {
+                        self.output.write_all(b"\" title=\"")?;
+                        self.escape(&nl.title)?;
+                    }
+                    self.output.write_all(b"\">")?;
+                } else {
+                    self.output.write_all(b"</a>")?;
+                }
+            }
+            NodeValue::Image(ref nl) => {
+                if entering {
+                    self.output.write_all(b"<img src=\"")?;
+                    if self.options.render.unsafe_ || !dangerous_url(&nl.url) {
+                        self.escape_href(&nl.url)?;
+                    }
+                    self.output.write_all(b"\" alt=\"")?;
+                    return Ok(true);
+                } else {
+                    if !nl.title.is_empty() {
+                        self.output.write_all(b"\" title=\"")?;
+                        self.escape(&nl.title)?;
+                    }
+                    self.output.write_all(b"\" />")?;
+                }
+            }
+            NodeValue::Table(..) => {
+                if entering {
+                    self.cr()?;
+                    self.output.write_all(b"<table>\n")?;
+                } else {
+                    if !node
+                        .last_child()
+                        .unwrap()
+                        .same_node(node.first_child().unwrap())
+                    {
+                        self.cr()?;
+                        self.output.write_all(b"</tbody>\n")?;
+                    }
+                    self.cr()?;
+                    self.output.write_all(b"</table>\n")?;
+                }
+            }
+            NodeValue::TableRow(header) => {
+                if entering {
+                    self.cr()?;
+                    if header {
+                        self.output.write_all(b"<thead>\n")?;
+                    } else if let Some(n) = node.previous_sibling() {
+                        if let NodeValue::TableRow(true) = n.data.borrow().value {
+                            self.output.write_all(b"<tbody>\n")?;
+                        }
+                    }
+                    self.output.write_all(b"<tr>")?;
+                } else {
+                    self.cr()?;
+                    self.output.write_all(b"</tr>")?;
+                    if header {
+                        self.cr()?;
+                        self.output.write_all(b"</thead>")?;
+                    }
+                }
+            }
+            NodeValue::TableCell => {
+                let row = &node.parent().unwrap().data.borrow().value;
+                let in_header = match *row {
+                    NodeValue::TableRow(header) => header,
+                    _ => panic!(),
+                };
+
+                let table = &node.parent().unwrap().parent().unwrap().data.borrow().value;
+                let alignments = match *table {
+                    NodeValue::Table(ref alignments) => alignments,
+                    _ => panic!(),
+                };
+
+                if entering {
+                    self.cr()?;
+                    if in_header {
+                        self.output.write_all(b"<th")?;
+                    } else {
+                        self.output.write_all(b"<td")?;
+                    }
+
+                    let mut start = node.parent().unwrap().first_child().unwrap();
+                    let mut i = 0;
+                    while !start.same_node(node) {
+                        i += 1;
+                        start = start.next_sibling().unwrap();
+                    }
+
+                    match alignments[i] {
+                        TableAlignment::Left => {
+                            self.output.write_all(b" align=\"left\"")?;
+                        }
+                        TableAlignment::Right => {
+                            self.output.write_all(b" align=\"right\"")?;
+                        }
+                        TableAlignment::Center => {
+                            self.output.write_all(b" align=\"center\"")?;
+                        }
+                        TableAlignment::None => (),
+                    }
+
+                    self.output.write_all(b">")?;
+                } else if in_header {
+                    self.output.write_all(b"</th>")?;
+                } else {
+                    self.output.write_all(b"</td>")?;
+                }
+            }
+            NodeValue::FootnoteDefinition(_) => {
+                if entering {
+                    if self.footnote_ix == 0 {
+                        self.output
+                            .write_all(b"<section class=\"footnotes\">\n<ol>\n")?;
+                    }
+                    self.footnote_ix += 1;
+                    writeln!(self.output, "<li id=\"fn{}\">", self.footnote_ix)?;
+                } else {
+                    if self.put_footnote_backref()? {
+                        self.output.write_all(b"\n")?;
+                    }
+                    self.output.write_all(b"</li>\n")?;
+                }
+            }
+            NodeValue::FootnoteReference(ref r) => {
+                if entering {
+                    let r = str::from_utf8(r).unwrap();
+                    write!(
+                        self.output,
+                        "<sup class=\"footnote-ref\"><a href=\"#fn{}\" id=\"fnref{}\">{}</a></sup>",
+                        r, r, r
+                    )?;
+                }
+            }
+            NodeValue::TaskItem(checked) => {
+                if entering {
+                    if checked {
+                        self.output.write_all(
+                            b"<input type=\"checkbox\" disabled=\"\" checked=\"\" /> ",
+                        )?;
+                    } else {
+                        self.output
+                            .write_all(b"<input type=\"checkbox\" disabled=\"\" /> ")?;
+                    }
+                }
+            }
+        }
+        Ok(false)
+    }
+
+    fn format_node_v2<'a>(&mut self, node: &'a AstNode<'a>, entering: bool) -> io::Result<bool> {
         match node.data.borrow().value {
             NodeValue::Document => (),
             NodeValue::FrontMatter(_) => (),

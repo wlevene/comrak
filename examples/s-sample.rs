@@ -176,10 +176,12 @@ fn parseSMD1() {
         }
     });
 
-    // dump_node(root);
+    dump_node(root);
     println!("--------------------------------1");
     let mut html = vec![];
-    let result = format_html(root, &ComrakOptions::default(), &mut html);
+    // let result = format_html(root, &ComrakOptions::default(), &mut html);
+
+    let result = format_slide(root, &ComrakOptions::default(), &mut html);
 
     println!("--------------------------------{:?}", result);
     let str = String::from_utf8_lossy(&html);
@@ -187,6 +189,6 @@ fn parseSMD1() {
 }
 
 fn main() {
-    parseSMD();
-    // parseSMD1();
+    // parseSMD();
+    parseSMD1();
 }

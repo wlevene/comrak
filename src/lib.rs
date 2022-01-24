@@ -91,6 +91,9 @@ extern crate unicode_categories;
 extern crate wasm_bindgen;
 use wasm_bindgen::prelude::*;
 
+extern crate serde;
+use serde::{Deserialize, Serialize};
+
 pub mod arena_tree;
 mod cm;
 mod ctype;
