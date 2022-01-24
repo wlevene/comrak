@@ -745,11 +745,34 @@ impl<'o> HtmlSlideFormatter<'o> {
                     if self.options.render.escape {
                         self.escape(&literal)?;
                     } else if !self.options.render.unsafe_ {
-                        jsonDom.format_content = format!(
-                            "{} {}",
-                            jsonDom.format_content,
-                            String::from_utf8_lossy(literal)
-                        );
+                        // jsonDom.format_content = format!(
+                        //     "{} {}",
+                        //     jsonDom.format_content,
+                        //     String::from_utf8_lossy(literal)
+                        // );
+
+                        let image_attr = String::from_utf8_lossy(literal);
+                        println!("{}", image_attr);
+                        let mut image_attr = image_attr.replace("<!--", "");
+                        let mut image_attr = image_attr.replace("-->", "");
+
+                        println!("{}", image_attr);
+
+                        let map: HashMap<String, serde_json::Value> =
+                            serde_json::from_str(&image_attr).unwrap();
+
+                        jsonDom.format_content =
+                            jsonDom.format_content.trim_end_matches('>').to_string();
+
+                        for (key, value) in &map {
+                            jsonDom.format_content =
+                                format!("{} {}={}", jsonDom.format_content, key, value);
+                        }
+
+                        // let deserialized: HashMap<String, String> =
+                        //     serde_json::from_str(&image_attr).unwrap();
+
+                        jsonDom.format_content = format!("{}>", jsonDom.format_content);
 
                         self.output.write_all(b"<!-- raw HTML omitted -->")?;
                     } else if self.options.extension.tagfilter && tagfilter(literal) {
@@ -803,14 +826,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                 } else {
                     self.output.write_all(b"</a>")?;
 
-                    jsonDom.format_content = format!("{}{}", jsonDom.format_content, "\n");
-                    if !nl.title.is_empty() {
-                        jsonDom.format_content = format!(
-                            "{}[{}]",
-                            jsonDom.format_content,
-                            String::from_utf8_lossy(&nl.title)
-                        );
-                    }
+                    if !nl.title.is_empty() {}
 
                     if self.options.render.unsafe_ || !dangerous_url(&nl.url) {
                         jsonDom.format_content = format!(
@@ -835,27 +851,51 @@ impl<'o> HtmlSlideFormatter<'o> {
                         self.escape(&nl.title)?;
                     }
                     self.output.write_all(b"\" />")?;
+                    let mut need_close = false;
+                    if self.options.render.unsafe_ || !dangerous_url(&nl.url) {
+                        // jsonDom.format_content = format!(
+                        //     "{}({})",
+                        //     jsonDom.format_content,
+                        //     String::from_utf8_lossy(&nl.url)
+                        // );
+
+                        jsonDom.format_content = format!(
+                            "{}<img src={}",
+                            jsonDom.format_content,
+                            String::from_utf8_lossy(&nl.url)
+                        );
+                        need_close = true
+                    }
 
                     match node.first_child() {
                         Some(child) => match child.data.borrow().value {
                             NodeValue::Text(ref text) => {
+                                // jsonDom.format_content = format!(
+                                //     "{}![{}]",
+                                //     jsonDom.format_content,
+                                //     String::from_utf8_lossy(text)
+                                // );
+
                                 jsonDom.format_content = format!(
-                                    "{}![{}]",
+                                    "{} alt={}",
                                     jsonDom.format_content,
                                     String::from_utf8_lossy(text)
                                 );
                             }
 
                             _ => {
-                                jsonDom.format_content = format!("{}![]", jsonDom.format_content,);
+                                // jsonDom.format_content = format!("{}![]", jsonDom.format_content,);
                             }
                         },
                         None => {
-                            jsonDom.format_content = format!("{}![]", jsonDom.format_content,);
+                            // jsonDom.format_content = format!("{}![]", jsonDom.format_content,);
                         }
                     }
 
-                    println!("image: {:?}", nl);
+                    if need_close {
+                        jsonDom.format_content = format!("{}>", jsonDom.format_content);
+                    }
+
                     // if !nl.title.is_empty() {
                     //     jsonDom.format_content = format!(
                     //         "{}[{}]",
@@ -863,14 +903,6 @@ impl<'o> HtmlSlideFormatter<'o> {
                     //         String::from_utf8_lossy(&nl.title)
                     //     );
                     // }
-
-                    if self.options.render.unsafe_ || !dangerous_url(&nl.url) {
-                        jsonDom.format_content = format!(
-                            "{}({})",
-                            jsonDom.format_content,
-                            String::from_utf8_lossy(&nl.url)
-                        );
-                    }
                 }
             }
             NodeValue::Table(..) => {
