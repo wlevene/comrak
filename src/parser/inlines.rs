@@ -1029,7 +1029,7 @@ impl<'a, 'r, 'o, 'd, 'i, 'c, 'subj> Subject<'a, 'r, 'o, 'd, 'i, 'c, 'subj> {
         // let is_image = self.brackets[brackets_len - 1].image;
         // let is_effect = self.brackets[brackets_len - 1].effect;
 
-        println!(">>>>> is_image: {:?} is_effect: {:?}", is_image, is_effect);
+        // println!(">>>>> is_image: {:?} is_effect: {:?}", is_image, is_effect);
         let after_link_text_pos = self.pos;
 
         if is_effect {

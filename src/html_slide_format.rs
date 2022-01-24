@@ -475,7 +475,6 @@ impl<'o> HtmlSlideFormatter<'o> {
             }
             NodeValue::Item(..) => {
                 if entering {
-                    jsonDom.format_content = format!("{}{}", jsonDom.format_content, "\n");
                     self.cr()?;
                     self.output.write_all(b"<li>")?;
                 } else {
@@ -631,10 +630,11 @@ impl<'o> HtmlSlideFormatter<'o> {
                 }
             }
             NodeValue::Text(ref literal) => {
-                println!("MMMMM {}", String::from_utf8_lossy(literal));
                 if entering {
                     self.escape(literal)?;
                 } else {
+                    println!("{:?}", String::from_utf8_lossy(literal));
+                    println!("{:?}", node.parent());
                     match node.parent() {
                         Some(parent) => match parent.data.borrow().value {
                             NodeValue::Link(..) => {
@@ -644,20 +644,38 @@ impl<'o> HtmlSlideFormatter<'o> {
                                     String::from_utf8_lossy(literal)
                                 );
                             }
-                            // NodeValue::Image(..) => {
-                            //     jsonDom.format_content = format!(
-                            //         "{}![{}]",
-                            //         jsonDom.format_content,
-                            //         String::from_utf8_lossy(literal)
-                            //     );
-                            // }
-                            _ => {
+                            NodeValue::Item(..) => {
                                 jsonDom.format_content = format!(
-                                    "{}{}",
+                                    "{}- {}",
                                     jsonDom.format_content,
                                     String::from_utf8_lossy(literal)
                                 );
                             }
+                            _ => match parent.parent() {
+                                Some(parent) => match parent.data.borrow().value {
+                                    NodeValue::Item(..) => {
+                                        jsonDom.format_content = format!(
+                                            "{}- {}",
+                                            jsonDom.format_content,
+                                            String::from_utf8_lossy(literal)
+                                        );
+                                    }
+                                    _ => {
+                                        jsonDom.format_content = format!(
+                                            "{}{}",
+                                            jsonDom.format_content,
+                                            String::from_utf8_lossy(literal)
+                                        );
+                                    }
+                                },
+                                None => {
+                                    jsonDom.format_content = format!(
+                                        "{}{}",
+                                        jsonDom.format_content,
+                                        String::from_utf8_lossy(literal)
+                                    );
+                                }
+                            },
                         },
                         None => {
                             jsonDom.format_content = format!(

@@ -84,7 +84,7 @@ fn parseSMD() {
                             break;
                         }
 
-                        println!("xxxx {:?}:{:?}", k, v);
+                        // println!("xxxx {:?}:{:?}", k, v);
                         let nodekv = NodeKV {
                             key: k.as_bytes().to_vec(),
                             value: v.as_bytes().to_vec(),
@@ -152,7 +152,7 @@ fn parseSMD1() {
                             break;
                         }
 
-                        println!("xxxx {:?}:{:?}", k, v);
+                        // println!("xxxx {:?}:{:?}", k, v);
                         let nodekv = NodeKV {
                             key: k.as_bytes().to_vec(),
                             value: v.as_bytes().to_vec(),
