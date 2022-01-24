@@ -761,12 +761,19 @@ impl<'o> HtmlSlideFormatter<'o> {
                         let map: HashMap<String, serde_json::Value> =
                             serde_json::from_str(&image_attr).unwrap();
 
+                        println!("jsonDom.format_content：：： {:?}", jsonDom.format_content);
+                        jsonDom.format_content = jsonDom.format_content.trim_end().to_string();
                         jsonDom.format_content =
                             jsonDom.format_content.trim_end_matches('>').to_string();
-
+                        println!("jsonDom.format_content：：： {:?}", jsonDom.format_content);
                         for (key, value) in &map {
+                            let mut str_value = serde_json::to_string(value).unwrap();
+                            str_value = str_value.trim_end_matches('\"').to_string();
+                            str_value = str_value.trim_start_matches('\"').to_string();
+                            println!("key：：： {:?}", key);
+                            println!("str_value {:?}", str_value);
                             jsonDom.format_content =
-                                format!("{} {}={}", jsonDom.format_content, key, value);
+                                format!("{} {}=\"{}\"", jsonDom.format_content, key, str_value);
                         }
 
                         // let deserialized: HashMap<String, String> =
@@ -860,7 +867,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                         // );
 
                         jsonDom.format_content = format!(
-                            "{}<img src={}",
+                            "{}<img src=\"{}\"",
                             jsonDom.format_content,
                             String::from_utf8_lossy(&nl.url)
                         );
@@ -877,10 +884,11 @@ impl<'o> HtmlSlideFormatter<'o> {
                                 // );
 
                                 jsonDom.format_content = format!(
-                                    "{} alt={}",
+                                    "{} alt=\"{}\"",
                                     jsonDom.format_content,
                                     String::from_utf8_lossy(text)
                                 );
+                                need_close = true
                             }
 
                             _ => {
