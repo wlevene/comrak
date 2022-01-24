@@ -508,17 +508,40 @@ impl<'o> HtmlSlideFormatter<'o> {
                 }
             }
             NodeValue::SlideMetaDataBlock(ref smd) => {
-                jsonDom.format_meta = HashMap::new();
+                if entering {
+                    println!(" 2222 SlideMetaDataBlock");
+                    let mut meta: HashMap<String, String> = HashMap::new();
 
-                for kv in &smd.metadatas {
-                    jsonDom.format_meta.insert(
-                        String::from_utf8_lossy(&kv.key).to_string(),
-                        String::from_utf8_lossy(&kv.value).to_string(),
-                    );
-                }
+                    for kv in &smd.metadatas {
+                        meta.insert(
+                            String::from_utf8_lossy(&kv.key).to_string(),
+                            String::from_utf8_lossy(&kv.value).to_string(),
+                        );
+                    }
 
-                if (jsonDom.format_level == 0) {
-                    jsonDom.meta = jsonDom.format_meta.clone();
+                    if jsonDom.format_level == 1 {
+                        jsonDom.meta = meta.clone();
+                        jsonDom.front.meta = meta.clone();
+                    } else {
+                        let index: usize = jsonDom.format_level as usize;
+
+                        println!(" index: {}", index);
+                        println!(" meta: {:?}", meta);
+                        println!(" jsonDom.content: {:?}", jsonDom.content.len());
+
+                        match (jsonDom.content.get(index - 2)) {
+                            Some(section) => {
+                                let mut new_setction = SlideSectionHtmlDom::new();
+                                new_setction.meta = meta.clone();
+                                new_setction.content = section.content.clone();
+                                println!(" new_setction: {:?}", new_setction);
+                                std::mem::replace(&mut jsonDom.content[index - 2], new_setction);
+                            }
+                            None => {}
+                        };
+
+                        meta.clear();
+                    }
                 }
             }
             NodeValue::Effect(ref effect) => {
@@ -535,25 +558,23 @@ impl<'o> HtmlSlideFormatter<'o> {
             NodeValue::KV(ref _kv) => {}
             NodeValue::Heading(ref nch) => {
                 if entering {
+                    println!(" 1111 HEADER");
                     if nch.level == 1 {
-                        jsonDom.format_level = 0;
                         jsonDom.format_content = String::new();
                         jsonDom.format_content = format!("{}", "# ");
                     } else if nch.level == 2 {
-                        jsonDom.format_level += 1;
+                        let mut sectionDom = SlideSectionHtmlDom::new();
+                        sectionDom.content = jsonDom.format_content.clone();
+                        sectionDom.meta = jsonDom.format_meta.clone();
+                        jsonDom.content.push(sectionDom);
 
-                        if jsonDom.format_level == 1 {
-                            jsonDom.front.content = jsonDom.format_content.clone()
-                        } else {
-                            let mut sectionDom = SlideSectionHtmlDom::new();
-                            sectionDom.content = jsonDom.format_content.clone();
-                            sectionDom.meta = jsonDom.format_meta.clone();
-                            jsonDom.content.push(sectionDom);
-                        }
+                        println!(" 1111 jsonDom.content: {:?}", jsonDom.content.len());
 
                         jsonDom.format_content = String::new();
                         jsonDom.format_content = format!("{}", "## ");
                     }
+
+                    jsonDom.format_level += 1;
 
                     if self.last_is_effect {
                         self.last_is_effect = false;
@@ -633,20 +654,13 @@ impl<'o> HtmlSlideFormatter<'o> {
                 if entering {
                     self.escape(literal)?;
                 } else {
-                    println!("{:?}", String::from_utf8_lossy(literal));
-                    println!("{:?}", node.parent());
+                    // println!("{:?}", String::from_utf8_lossy(literal));
+                    // println!("{:?}", node.parent());
                     match node.parent() {
                         Some(parent) => match parent.data.borrow().value {
                             NodeValue::Link(..) => {
                                 jsonDom.format_content = format!(
                                     "{}[{}]",
-                                    jsonDom.format_content,
-                                    String::from_utf8_lossy(literal)
-                                );
-                            }
-                            NodeValue::Item(..) => {
-                                jsonDom.format_content = format!(
-                                    "{}- {}",
                                     jsonDom.format_content,
                                     String::from_utf8_lossy(literal)
                                 );
