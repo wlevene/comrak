@@ -579,7 +579,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                         )?;
                     }
                 } else {
-                    writeln!(self.output, "</h{}>tttt", nch.level)?;
+                    writeln!(self.output, "</h{}>", nch.level)?;
                 }
             }
 
@@ -753,14 +753,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                     if self.options.render.escape {
                         self.escape(&literal)?;
                     } else if !self.options.render.unsafe_ {
-                        // jsonDom.format_content = format!(
-                        //     "{} {}",
-                        //     jsonDom.format_content,
-                        //     String::from_utf8_lossy(literal)
-                        // );
-
                         let image_attr = String::from_utf8_lossy(literal);
-                        println!("{}", image_attr);
                         let mut image_attr = image_attr.replace("<!--", "");
                         let mut image_attr = image_attr.replace("-->", "");
 
@@ -789,8 +782,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                                     let mut str_value = serde_json::to_string(value).unwrap();
                                     str_value = str_value.trim_end_matches('\"').to_string();
                                     str_value = str_value.trim_start_matches('\"').to_string();
-                                    println!("key：：： {:?}", key);
-                                    println!("str_value {:?}", str_value);
+
                                     jsonDom.format_content = format!(
                                         "{} {}=\"{}\"",
                                         jsonDom.format_content, key, str_value
