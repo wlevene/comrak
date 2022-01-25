@@ -766,39 +766,42 @@ impl<'o> HtmlSlideFormatter<'o> {
 
                         println!("{}", image_attr);
 
-                        let xxxx: Result<serde_json::Value> = serde_json::from_str(&image_attr);
+                        let json_result: Result<serde_json::Value> =
+                            serde_json::from_str(&image_attr);
 
-                        match xxxx {
-                            Ok(xxxx) => {
-                                println!("{:?}", xxxx);
+                        match json_result {
+                            Ok(json_result) => {
+                                println!("{:?}", json_result);
+                                let json_map = json_result.as_object().unwrap();
+
+                                jsonDom.format_content =
+                                    jsonDom.format_content.trim_end().to_string();
+                                jsonDom.format_content =
+                                    jsonDom.format_content.trim_end_matches('>').to_string();
+                                println!(
+                                    "jsonDom.format_content：：： {:?}",
+                                    jsonDom.format_content
+                                );
+
+                                let iter = json_map.iter();
+
+                                for (key, value) in iter {
+                                    let mut str_value = serde_json::to_string(value).unwrap();
+                                    str_value = str_value.trim_end_matches('\"').to_string();
+                                    str_value = str_value.trim_start_matches('\"').to_string();
+                                    println!("key：：： {:?}", key);
+                                    println!("str_value {:?}", str_value);
+                                    jsonDom.format_content = format!(
+                                        "{} {}=\"{}\"",
+                                        jsonDom.format_content, key, str_value
+                                    );
+                                }
+                                jsonDom.format_content = format!("{}>", jsonDom.format_content);
                             }
-                            Err(xxxx) => {
-                                println!("{:?}", xxxx);
+                            Err(_) => {
+                                // println!("{:?}", json_result);
                             }
                         }
-
-                        let map: HashMap<String, serde_json::Value> =
-                            serde_json::from_str(&image_attr).unwrap();
-
-                        println!("jsonDom.format_content：：： {:?}", jsonDom.format_content);
-                        jsonDom.format_content = jsonDom.format_content.trim_end().to_string();
-                        jsonDom.format_content =
-                            jsonDom.format_content.trim_end_matches('>').to_string();
-                        println!("jsonDom.format_content：：： {:?}", jsonDom.format_content);
-                        for (key, value) in &map {
-                            let mut str_value = serde_json::to_string(value).unwrap();
-                            str_value = str_value.trim_end_matches('\"').to_string();
-                            str_value = str_value.trim_start_matches('\"').to_string();
-                            println!("key：：： {:?}", key);
-                            println!("str_value {:?}", str_value);
-                            jsonDom.format_content =
-                                format!("{} {}=\"{}\"", jsonDom.format_content, key, str_value);
-                        }
-
-                        // let deserialized: HashMap<String, String> =
-                        //     serde_json::from_str(&image_attr).unwrap();
-
-                        jsonDom.format_content = format!("{}>", jsonDom.format_content);
 
                         self.output.write_all(b"<!-- raw HTML omitted -->")?;
                     } else if self.options.extension.tagfilter && tagfilter(literal) {
