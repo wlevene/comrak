@@ -11,13 +11,20 @@ use std::io::{self, Write};
 use std::str::{self, FromStr};
 
 use serde::{Deserialize, Serialize};
+use serde_json::{Result, Value};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SlideHtmlDom {
     front: SlideSectionHtmlDom,
     content: Vec<SlideSectionHtmlDom>,
-    format_level: u8,       // 0:cover  -1 footer 标记format时 当前在那一页
+
+    #[serde(skip)]
+    format_level: u8, // 0:cover  -1 footer 标记format时 当前在那一页
+
+    #[serde(skip)]
     format_content: String, // 当前页面的内容
+
+    #[serde(skip)]
     format_meta: HashMap<String, String>,
 }
 
@@ -441,6 +448,7 @@ impl<'o> HtmlSlideFormatter<'o> {
         jsonDom.format_meta.clear();
         jsonDom.format_content.clear();
     }
+
     fn format_node<'a>(
         &mut self,
         node: &'a AstNode<'a>,
@@ -757,6 +765,17 @@ impl<'o> HtmlSlideFormatter<'o> {
                         let mut image_attr = image_attr.replace("-->", "");
 
                         println!("{}", image_attr);
+
+                        let xxxx: Result<serde_json::Value> = serde_json::from_str(&image_attr);
+
+                        match xxxx {
+                            Ok(xxxx) => {
+                                println!("{:?}", xxxx);
+                            }
+                            Err(xxxx) => {
+                                println!("{:?}", xxxx);
+                            }
+                        }
 
                         let map: HashMap<String, serde_json::Value> =
                             serde_json::from_str(&image_attr).unwrap();

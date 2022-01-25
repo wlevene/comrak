@@ -94,6 +94,8 @@ use wasm_bindgen::prelude::*;
 extern crate serde;
 use serde::{Deserialize, Serialize};
 
+extern crate serde_json;
+
 pub mod arena_tree;
 mod cm;
 mod ctype;
