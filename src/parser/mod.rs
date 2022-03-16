@@ -21,8 +21,6 @@ use std::{io, mem};
 use strings;
 use typed_arena::Arena;
 
-
-
 const TAB_STOP: usize = 4;
 const CODE_INDENT: usize = 4;
 
@@ -894,7 +892,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     literal: Vec::new(),
                 };
 
-                println!("code : {:?}", &ncb.literal);
+                // println!("code : {:?}", &ncb.literal);
                 *container = self.add_child(*container, NodeValue::CodeBlock(ncb));
                 self.advance_offset(line, first_nonspace + matched - offset, false);
             } else if !indented
@@ -924,7 +922,7 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                     _ => false,
                 }
             {
-                println!("open new blocks NodeValue::Paragraph");
+                // println!("open new blocks NodeValue::Paragraph");
                 let has_content = {
                     let mut ast = container.data.borrow_mut();
                     self.resolve_reference_link_definitions(&mut ast.content)
@@ -1384,12 +1382,12 @@ impl<'a, 'o, 'c> Parser<'a, 'o, 'c> {
                 AddTextResult::SlideBlock => {
                     self.add_line(container, line);
                     let s = String::from_utf8_lossy(line);
-                    println!("slide meta data raw string : {}", s);
+                    // println!("slide meta data raw string : {}", s);
                 }
                 AddTextResult::Effect => {
                     self.add_line(container, line);
                     let s = String::from_utf8_lossy(line);
-                    println!("Addtextresult::Effect : {}", s);
+                    //  println!("Addtextresult::Effect : {}", s);
                 }
                 AddTextResult::HtmlBlock(block_type) => {
                     self.add_line(container, line);

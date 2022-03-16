@@ -65,7 +65,7 @@ pub fn format_document_slide<'a>(
     options: &ComrakOptions,
     output: &mut dyn Write,
 ) -> io::Result<()> {
-    println!("format_document_slide");
+    // println!("format_document_slide");
 
     let mut writer = WriteWithLast {
         output,
@@ -82,7 +82,7 @@ pub fn format_document_slide<'a>(
     // }
 
     let serialized = serde_json::to_string(&jsonDom).unwrap();
-    println!("serialized = {}", serialized);
+    // println!("serialized = {}", serialized);
     Ok(())
 }
 
@@ -757,24 +757,24 @@ impl<'o> HtmlSlideFormatter<'o> {
                         let mut image_attr = image_attr.replace("<!--", "");
                         let mut image_attr = image_attr.replace("-->", "");
 
-                        println!("{}", image_attr);
+                        // println!("{}", image_attr);
 
                         let json_result: Result<serde_json::Value> =
                             serde_json::from_str(&image_attr);
 
                         match json_result {
                             Ok(json_result) => {
-                                println!("{:?}", json_result);
+                                // println!("{:?}", json_result);
                                 let json_map = json_result.as_object().unwrap();
 
                                 jsonDom.format_content =
                                     jsonDom.format_content.trim_end().to_string();
                                 jsonDom.format_content =
                                     jsonDom.format_content.trim_end_matches('>').to_string();
-                                println!(
-                                    "jsonDom.format_content：：： {:?}",
-                                    jsonDom.format_content
-                                );
+                                // println!(
+                                //     "jsonDom.format_content：：： {:?}",
+                                //     jsonDom.format_content
+                                // );
 
                                 let iter = json_map.iter();
 

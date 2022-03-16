@@ -69,7 +69,7 @@ fn parseSMD() {
     iter_nodes(root, &|node| {
         match node.data.borrow_mut().value {
             NodeValue::Heading(ref mut head) => {
-                println!("Head level:{}", head.level);
+                // println!("Head level:{}", head.level);
             }
             NodeValue::SlideMetaDataBlock(ref mut smd) => {
                 let kv_literal = String::from_utf8_lossy(&smd.literal);
@@ -92,7 +92,7 @@ fn parseSMD() {
                         // let kv = NodeValue::KV(nodekv);
                         smd.metadatas.push(nodekv);
                     } else {
-                        println!("{:?}", line);
+                        // println!("{:?}", line);
                     }
                 }
             }
@@ -118,6 +118,15 @@ fn parseSMD() {
 fn parseSMD1() {
     let filename = "/Users/gangwang/root/code/github/comrak/examples/s1.md";
     let md_content = readfile(filename);
+    let result = parseSlide2Input(&md_content);
+    println!("{}", result);
+}
+
+fn parseSlide2Input(input: &str) -> String {
+    // println!("111111111");
+
+    let md_content = input;
+    let mut result = String::new();
 
     use comrak::nodes::{AstNode, NodeValue};
     use comrak::{dump_node, format_html, parse_document, Arena, ComrakOptions};
@@ -125,7 +134,7 @@ fn parseSMD1() {
     // The returned nodes are created in the supplied Arena, and are bound by its lifetime.
     let arena = Arena::new();
 
-    let root = parse_document(&arena, md_content.as_str(), &ComrakOptions::default());
+    let root = parse_document(&arena, md_content, &ComrakOptions::default());
 
     fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &F)
     where
@@ -148,7 +157,7 @@ fn parseSMD1() {
                     // let kv = NodeValue::KV;
                     if let Some((k, v)) = line.split_once(':') {
                         if k.len() <= 0 {
-                            println!("break:: {:?}", line);
+                            // println!("break:: {:?}", line);
                             break;
                         }
 
@@ -157,35 +166,32 @@ fn parseSMD1() {
                             key: k.as_bytes().to_vec(),
                             value: v.as_bytes().to_vec(),
                         };
-                        println!("vvvv {:?}", &nodekv);
+                        // println!("vvvv {:?}", &nodekv);
                         // let kv = NodeValue::KV(nodekv);
                         smd.metadatas.push(nodekv);
                     } else {
-                        println!("{:?}", line);
+                        // println!("{:?}", line);
                     }
                 }
             }
             NodeValue::CodeBlock(ref mut codeblock) => {
-                println!(
-                    "{:?} {:?}",
-                    String::from_utf8_lossy(&codeblock.info),
-                    String::from_utf8_lossy(&codeblock.literal)
-                )
+                // println!(
+                //     "{:?} {:?}",
+                //     String::from_utf8_lossy(&codeblock.info),
+                //     String::from_utf8_lossy(&codeblock.literal)
+                // )
             }
             _ => (),
         }
     });
 
-    dump_node(root);
-    println!("--------------------------------1");
+    // dump_node(root);
     let mut html = vec![];
-    // let result = format_html(root, &ComrakOptions::default(), &mut html);
+    let format_slide_result = format_slide(root, &ComrakOptions::default(), &mut html);
 
-    let result = format_slide(root, &ComrakOptions::default(), &mut html);
-
-    println!("--------------------------------{:?}", result);
     let str = String::from_utf8_lossy(&html);
-    println!("{:?}", &str);
+    result = str.to_string();
+    result
 }
 
 fn main() {

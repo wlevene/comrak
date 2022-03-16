@@ -119,6 +119,10 @@ pub use parser::{
 };
 pub use typed_arena::Arena;
 
+use crate::nodes::AstNode;
+use crate::nodes::NodeKV;
+use crate::nodes::NodeValue;
+
 /// Render Markdown to HTML.
 ///
 /// See the documentation of the crate root for an example.
@@ -133,15 +137,62 @@ pub fn markdown_to_html(md: &str, options: &ComrakOptions) -> String {
 /// Render Markdown to HTML For WebAssmbly.
 ///
 /// See the documentation of the crate root for an example.
-// #[wasm_bindgen]
-// pub fn markdown_to_html_wasm_bindgen(md: &str) -> String {
-//     let opt = comrakOpt();
-//     let arena = Arena::new();
-//     let root = parse_document(&arena, md, opt);
-//     let mut s = Vec::new();
-//     format_html(root, options, &mut s).unwrap();
-//     String::from_utf8(s).unwrap()
-// }
+#[wasm_bindgen]
+pub fn markdown_to_html_wasm_bindgen(input: &str) -> String {
+    let md_content = input;
+    let mut result = String::new();
+
+    // The returned nodes are created in the supplied Arena, and are bound by its lifetime.
+    let arena = Arena::new();
+
+    let root = parse_document(&arena, md_content, &ComrakOptions::default());
+
+    fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &F)
+    where
+        F: Fn(&'a AstNode<'a>),
+    {
+        f(node);
+        for c in node.children() {
+            iter_nodes(c, f);
+        }
+    }
+
+    iter_nodes(root, &|node| {
+        match node.data.borrow_mut().value {
+            NodeValue::SlideMetaDataBlock(ref mut smd) => {
+                let kv_literal = String::from_utf8_lossy(&smd.literal);
+
+                // smd.metadatas = Vec::new();
+                let lines = kv_literal.lines();
+                for line in lines {
+                    // let kv = NodeValue::KV;
+                    if let Some((k, v)) = line.split_once(':') {
+                        if k.len() <= 0 {
+                            break;
+                        }
+
+                        let nodekv = NodeKV {
+                            key: k.as_bytes().to_vec(),
+                            value: v.as_bytes().to_vec(),
+                        };
+                        smd.metadatas.push(nodekv);
+                    } else {
+                    }
+                }
+            }
+            NodeValue::CodeBlock(ref mut codeblock) => {}
+            _ => (),
+        }
+    });
+
+    // dump_node(root);
+    let mut html = vec![];
+    let format_slide_result = format_slide(root, &ComrakOptions::default(), &mut html);
+
+    let str = String::from_utf8_lossy(&html);
+    result = str.to_string();
+    result
+}
 
 // #[wasm_bindgen(js_namespace = console)]
 // pub fn log(s: &str);
