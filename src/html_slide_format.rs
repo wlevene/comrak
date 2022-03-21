@@ -71,9 +71,18 @@ pub fn format_document_slide<'a>(
         output,
         last_was_lf: Cell::new(true),
     };
+
+    let mut html: Vec<u8> = vec![];
+    let mut tmp_out = &mut html;
+
+    let mut tmp_writer = WriteWithLast {
+        output: tmp_out,
+        last_was_lf: Cell::new(true),
+    };
+
     let mut jsonDom = SlideHtmlDom::new();
 
-    let mut f = HtmlSlideFormatter::new(options, &mut writer);
+    let mut f = HtmlSlideFormatter::new(options, &mut tmp_writer);
     f.format(root, &mut jsonDom, false)?;
     f.setupSlideDomContent(root, &mut jsonDom);
 
@@ -83,6 +92,7 @@ pub fn format_document_slide<'a>(
 
     let serialized = serde_json::to_string(&jsonDom).unwrap();
     // println!("serialized = {}", serialized);
+    output.write_all(serialized.as_bytes())?;
     Ok(())
 }
 

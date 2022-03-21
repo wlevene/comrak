@@ -119,7 +119,7 @@ fn parseSMD1() {
     let filename = "/Users/gangwang/root/code/github/comrak/examples/s1.md";
     let md_content = readfile(filename);
     let result = parseSlide2Input(&md_content);
-    println!("{}", result);
+    println!("html: {}", result);
 }
 
 fn parseSlide2Input(input: &str) -> String {

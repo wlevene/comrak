@@ -1,8 +1,8 @@
 [package]
 name = "comrak"
-version = "0.11.0"
-authors = ["Ashe Connor <ashe@kivikakk.ee>"]
-description = "A 100% CommonMark-compatible GitHub Flavored Markdown parser and formatter"
+version = "0.5.1"
+authors = ["Levene <wong.levene@gmail.com>"]
+description = "Slide Markdown parser and formatter"
 documentation = "https://docs.rs/comrak"
 homepage = "https://github.com/kivikakk/comrak"
 repository = "https://github.com/kivikakk/comrak"
@@ -49,3 +49,6 @@ xdg = "^2.1"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
