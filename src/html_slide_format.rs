@@ -614,7 +614,24 @@ impl<'o> HtmlSlideFormatter<'o> {
                             self.escape(&ncb.info[..first_tag])?;
                             self.output.write_all(b"\">")?;
                         }
+                        jsonDom.format_content =
+                            format!("{}\n{}", jsonDom.format_content, "```".to_string());
+
+                        jsonDom.format_content = format!(
+                            "{}- {}",
+                            jsonDom.format_content,
+                            String::from_utf8_lossy(&ncb.info[..first_tag])
+                        );
                     }
+
+                    jsonDom.format_content = format!(
+                        "{}\n{}",
+                        jsonDom.format_content,
+                        String::from_utf8_lossy(&ncb.literal)
+                    );
+                    // jsonDom.format_content =
+                    //     format!("{}- {}", jsonDom.format_content, "\n```\n".to_string());
+
                     self.escape(&ncb.literal)?;
                     self.output.write_all(b"</code></pre>\n")?;
                 }
@@ -753,6 +770,12 @@ impl<'o> HtmlSlideFormatter<'o> {
             }
             NodeValue::Code(NodeCode { ref literal, .. }) => {
                 if entering {
+                    jsonDom.format_content = format!(
+                        "{}`{}`",
+                        jsonDom.format_content,
+                        String::from_utf8_lossy(literal)
+                    );
+
                     self.output.write_all(b"<code>")?;
                     self.escape(literal)?;
                     self.output.write_all(b"</code>")?;
@@ -798,7 +821,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                                         jsonDom.format_content, key, str_value
                                     );
                                 }
-                                jsonDom.format_content = format!("{}>", jsonDom.format_content);
+                                jsonDom.format_content = format!("{}>\n", jsonDom.format_content);
                             }
                             Err(_) => {
                                 // println!("{:?}", json_result);
@@ -895,7 +918,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                             jsonDom.format_content,
                             String::from_utf8_lossy(&nl.url)
                         );
-                        need_close = true
+                        // need_close = true
                     }
 
                     match node.first_child() {
@@ -925,7 +948,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                     }
 
                     if need_close {
-                        jsonDom.format_content = format!("{}>", jsonDom.format_content);
+                        jsonDom.format_content = format!("{}>\n\n", jsonDom.format_content);
                     }
 
                     // if !nl.title.is_empty() {
