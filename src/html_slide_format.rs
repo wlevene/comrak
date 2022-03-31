@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Result, Value};
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SlideHtmlDom {
+pub struct SlideHtmlDom {
     front: SlideSectionHtmlDom,
     content: Vec<SlideSectionHtmlDom>,
 
@@ -57,6 +57,42 @@ impl SlideSectionHtmlDom {
             content: String::new(),
         }
     }
+}
+
+/// Formats an AST as HTML, modified by the given options.
+pub fn format_document_slide_js<'a>(
+    root: &'a AstNode<'a>,
+    options: &ComrakOptions,
+    output: &mut dyn Write,
+    jsonDom: &mut SlideHtmlDom,
+) -> io::Result<()> {
+    // println!("format_document_slide");
+
+    let mut writer = WriteWithLast {
+        output,
+        last_was_lf: Cell::new(true),
+    };
+
+    let mut html: Vec<u8> = vec![];
+    let mut tmp_out = &mut html;
+
+    let mut tmp_writer = WriteWithLast {
+        output: tmp_out,
+        last_was_lf: Cell::new(true),
+    };
+
+    let mut f = HtmlSlideFormatter::new(options, &mut tmp_writer);
+    f.format(root, jsonDom, false)?;
+    f.setupSlideDomContent(root, jsonDom);
+
+    // if f.footnote_ix > 0 {
+    //     f.output.write_all(b"</ol>\n</section>\n")?;
+    // }
+
+    let serialized = serde_json::to_string(&jsonDom).unwrap();
+    // println!("serialized = {}", serialized);
+    output.write_all(serialized.as_bytes())?;
+    Ok(())
 }
 
 /// Formats an AST as HTML, modified by the given options.

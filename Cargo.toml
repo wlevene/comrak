@@ -31,7 +31,8 @@ twoway = "0.2"
 pest = "2"
 pest_derive = "2"
 shell-words = "1.0"
-wasm-bindgen = "0.2"
+# wasm-bindgen = "0.2"
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 js-sys = "0.3.55"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

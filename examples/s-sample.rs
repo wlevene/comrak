@@ -1,9 +1,8 @@
 use std::{fmt::Debug, fs::File, io::Read};
 
 use comrak::nodes::NodeKV;
-
 use comrak::{
-    format_html, format_slide,
+    format_html, format_slide, format_slide_js,
     nodes::{AstNode, NodeCode, NodeValue},
     parse_document, Arena, ComrakExtensionOptions, ComrakOptions, ComrakRenderOptions,
 };
@@ -188,6 +187,10 @@ fn parseSlide2Input(input: &str) -> String {
     // dump_node(root);
     let mut html = vec![];
     let format_slide_result = format_slide(root, &ComrakOptions::default(), &mut html);
+    // let mut jsonDom = SlideHtmlDom::new();
+
+    // let format_slide_result =
+    //     format_slide_js(root, &ComrakOptions::default(), &mut html, &mut jsonDom);
 
     let str = String::from_utf8_lossy(&html);
     result = str.to_string();
