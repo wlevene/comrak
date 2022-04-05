@@ -661,8 +661,6 @@ impl<'o> HtmlSlideFormatter<'o> {
                             self.escape(&ncb.info[..first_tag])?;
                             self.output.write_all(b"\">")?;
                         }
-                        jsonDom.format_content =
-                            format!("{}\n{}", jsonDom.format_content, "```".to_string());
 
                         let language = String::from_utf8_lossy(&ncb.info[..first_tag]);
 
@@ -673,6 +671,9 @@ impl<'o> HtmlSlideFormatter<'o> {
                             jsonDom.format_note =
                                 format!("{}", String::from_utf8_lossy(&ncb.literal));
                         } else {
+                            jsonDom.format_content =
+                                format!("{}\n{}", jsonDom.format_content, "```".to_string());
+
                             jsonDom.format_content =
                                 format!("{}- {}", jsonDom.format_content, language);
                         }
