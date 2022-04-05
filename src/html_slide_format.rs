@@ -1,3 +1,4 @@
+//! html_slide_format
 use ctype::isspace;
 use nodes::{AstNode, ListType, NodeCode, NodeValue, TableAlignment};
 use parser::ComrakOptions;
@@ -26,12 +27,16 @@ pub struct SlideHtmlDom {
 
     #[serde(skip)]
     format_meta: HashMap<String, String>,
+
+    #[serde(skip)]
+    format_note: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SlideSectionHtmlDom {
+pub struct SlideSectionHtmlDom {
     meta: HashMap<String, String>,
     content: String,
+    note: String,
 }
 
 impl SlideHtmlDom {
@@ -40,12 +45,14 @@ impl SlideHtmlDom {
             front: SlideSectionHtmlDom {
                 meta: HashMap::new(),
                 content: String::new(),
+                note: String::new(),
             },
 
             content: Vec::new(),
             format_level: 0,
             format_content: String::new(),
             format_meta: HashMap::new(),
+            format_note: String::new(),
         }
     }
 }
@@ -55,6 +62,7 @@ impl SlideSectionHtmlDom {
         SlideSectionHtmlDom {
             meta: HashMap::new(),
             content: String::new(),
+            note: String::new(),
         }
     }
 }
@@ -484,15 +492,18 @@ impl<'o> HtmlSlideFormatter<'o> {
         if jsonDom.format_level == 1 {
             jsonDom.front.content = jsonDom.format_content.clone();
             jsonDom.front.meta = jsonDom.format_meta.clone();
+            jsonDom.front.note = jsonDom.format_note.clone();
         } else if jsonDom.format_level > 1 {
             let mut sectionDom = SlideSectionHtmlDom::new();
             sectionDom.content = jsonDom.format_content.clone();
             sectionDom.meta = jsonDom.format_meta.clone();
+            sectionDom.note = jsonDom.format_note.clone();
             jsonDom.content.push(sectionDom);
         }
 
         jsonDom.format_meta.clear();
         jsonDom.format_content.clear();
+        jsonDom.format_note.clear();
     }
 
     fn format_node<'a>(
@@ -632,7 +643,7 @@ impl<'o> HtmlSlideFormatter<'o> {
             NodeValue::CodeBlock(ref ncb) => {
                 if entering {
                     self.cr()?;
-
+                    let mut is_note = false;
                     if ncb.info.is_empty() {
                         self.output.write_all(b"<pre><code>")?;
                     } else {
@@ -653,18 +664,28 @@ impl<'o> HtmlSlideFormatter<'o> {
                         jsonDom.format_content =
                             format!("{}\n{}", jsonDom.format_content, "```".to_string());
 
+                        let language = String::from_utf8_lossy(&ncb.info[..first_tag]);
+
+                        println!("language：{}", language);
+                        if &language == "note" {
+                            is_note = true;
+                            println!("--< note");
+                            jsonDom.format_note =
+                                format!("{}", String::from_utf8_lossy(&ncb.literal));
+                        } else {
+                            jsonDom.format_content =
+                                format!("{}- {}", jsonDom.format_content, language);
+                        }
+                    }
+
+                    if is_note == false {
                         jsonDom.format_content = format!(
-                            "{}- {}",
+                            "{}\n{}",
                             jsonDom.format_content,
-                            String::from_utf8_lossy(&ncb.info[..first_tag])
+                            String::from_utf8_lossy(&ncb.literal)
                         );
                     }
 
-                    jsonDom.format_content = format!(
-                        "{}\n{}",
-                        jsonDom.format_content,
-                        String::from_utf8_lossy(&ncb.literal)
-                    );
                     // jsonDom.format_content =
                     //     format!("{}- {}", jsonDom.format_content, "\n```\n".to_string());
 
