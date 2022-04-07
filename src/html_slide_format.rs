@@ -29,14 +29,14 @@ pub struct SlideHtmlDom {
     format_meta: HashMap<String, String>,
 
     #[serde(skip)]
-    format_note: String,
+    format_notes: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SlideSectionHtmlDom {
     meta: HashMap<String, String>,
     content: String,
-    note: String,
+    notes: String,
 }
 
 impl SlideHtmlDom {
@@ -45,14 +45,14 @@ impl SlideHtmlDom {
             front: SlideSectionHtmlDom {
                 meta: HashMap::new(),
                 content: String::new(),
-                note: String::new(),
+                notes: String::new(),
             },
 
             content: Vec::new(),
             format_level: 0,
             format_content: String::new(),
             format_meta: HashMap::new(),
-            format_note: String::new(),
+            format_notes: String::new(),
         }
     }
 }
@@ -62,7 +62,7 @@ impl SlideSectionHtmlDom {
         SlideSectionHtmlDom {
             meta: HashMap::new(),
             content: String::new(),
-            note: String::new(),
+            notes: String::new(),
         }
     }
 }
@@ -492,18 +492,25 @@ impl<'o> HtmlSlideFormatter<'o> {
         if jsonDom.format_level == 1 {
             jsonDom.front.content = jsonDom.format_content.clone();
             jsonDom.front.meta = jsonDom.format_meta.clone();
-            jsonDom.front.note = jsonDom.format_note.clone();
+            jsonDom.front.notes = jsonDom.format_notes.clone();
         } else if jsonDom.format_level > 1 {
             let mut sectionDom = SlideSectionHtmlDom::new();
             sectionDom.content = jsonDom.format_content.clone();
             sectionDom.meta = jsonDom.format_meta.clone();
-            sectionDom.note = jsonDom.format_note.clone();
+            sectionDom.notes = jsonDom.format_notes.clone();
+            if sectionDom.notes.is_empty() == false {
+                sectionDom.content = format!(
+                    "{}\n_1001110001000Notes_1001110001000_: {}",
+                    sectionDom.content, sectionDom.notes
+                );
+            }
+
             jsonDom.content.push(sectionDom);
         }
 
         jsonDom.format_meta.clear();
         jsonDom.format_content.clear();
-        jsonDom.format_note.clear();
+        jsonDom.format_notes.clear();
     }
 
     fn format_node<'a>(
@@ -668,7 +675,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                         if &language == "note" {
                             is_note = true;
                             println!("--< note");
-                            jsonDom.format_note =
+                            jsonDom.format_notes =
                                 format!("{}", String::from_utf8_lossy(&ncb.literal));
                         } else {
                             jsonDom.format_content =
