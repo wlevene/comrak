@@ -14,6 +14,7 @@ exclude = ["/hooks/*", "/script/*", "/vendor/*", "/.travis.yml", "/Makefile", "/
 
 [profile.release]
 lto = true
+opt-level = 'z'
 
 [[bin]]
 name = "comrak"
