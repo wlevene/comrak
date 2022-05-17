@@ -19,6 +19,8 @@ pub struct SlideHtmlDom {
     front: SlideSectionHtmlDom,
     content: Vec<SlideSectionHtmlDom>,
 
+    title : String,
+
     #[serde(skip)]
     format_level: u8, // 0:cover  -1 footer 标记format时 当前在那一页
 
@@ -37,6 +39,7 @@ pub struct SlideSectionHtmlDom {
     meta: HashMap<String, String>,
     content: String,
     notes: String,
+    title : String,
 }
 
 impl SlideHtmlDom {
@@ -46,6 +49,7 @@ impl SlideHtmlDom {
                 meta: HashMap::new(),
                 content: String::new(),
                 notes: String::new(),
+                title: String::new(),
             },
 
             content: Vec::new(),
@@ -53,6 +57,7 @@ impl SlideHtmlDom {
             format_content: String::new(),
             format_meta: HashMap::new(),
             format_notes: String::new(),
+            title: String::new(),
         }
     }
 }
@@ -63,6 +68,7 @@ impl SlideSectionHtmlDom {
             meta: HashMap::new(),
             content: String::new(),
             notes: String::new(),
+            title: String::new(),
         }
     }
 }
@@ -490,14 +496,18 @@ impl<'o> HtmlSlideFormatter<'o> {
         }
 
         if jsonDom.format_level == 1 {
+
+
             jsonDom.front.content = jsonDom.format_content.clone();
             jsonDom.front.meta = jsonDom.format_meta.clone();
             jsonDom.front.notes = jsonDom.format_notes.clone();
+            jsonDom.front.title = jsonDom.title.clone();
         } else if jsonDom.format_level > 1 {
             let mut sectionDom = SlideSectionHtmlDom::new();
             sectionDom.content = jsonDom.format_content.clone();
             sectionDom.meta = jsonDom.format_meta.clone();
             sectionDom.notes = jsonDom.format_notes.clone();
+            sectionDom.title = jsonDom.title.clone();
             if sectionDom.notes.is_empty() == false {
                 sectionDom.content = format!(
                     "{}\n_1001110001000Notes_1001110001000_: {}",
@@ -616,6 +626,10 @@ impl<'o> HtmlSlideFormatter<'o> {
                         jsonDom.format_content = format!("{}", "# ");
                     } else if nch.level == 2 {
                         jsonDom.format_content = format!("{}", "## ");
+                    } else if nch.level == 3 {
+                        jsonDom.format_content = format!("{}", "### ");
+                    } else if nch.level == 4 {
+                        jsonDom.format_content = format!("{}", "#### ");
                     }
 
                     jsonDom.format_level += 1;
@@ -726,13 +740,25 @@ impl<'o> HtmlSlideFormatter<'o> {
                 if entering {
                     self.escape(literal)?;
                 } else {
-                    // println!("{:?}", String::from_utf8_lossy(literal));
-                    // println!("{:?}", node.parent());
+                    // println!("SSSS {:?}", String::from_utf8_lossy(literal));
+                    // println!("AAA {:?}", node.parent());
                     match node.parent() {
                         Some(parent) => match parent.data.borrow().value {
                             NodeValue::Link(..) => {
                                 jsonDom.format_content = format!(
                                     "{}[{}]",
+                                    jsonDom.format_content,
+                                    String::from_utf8_lossy(literal)
+                                );
+                            }
+                            NodeValue::Heading(..) => {
+                                // 为了title 才这里给header赋值
+                                jsonDom.title =  format!(
+                                    "{}",
+                                    String::from_utf8_lossy(literal));
+
+                                jsonDom.format_content = format!(
+                                    "{}{}",
                                     jsonDom.format_content,
                                     String::from_utf8_lossy(literal)
                                 );
