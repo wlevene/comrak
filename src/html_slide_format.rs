@@ -696,7 +696,7 @@ impl<'o> HtmlSlideFormatter<'o> {
                                 format!("{}\n{}", jsonDom.format_content, "```".to_string());
 
                             jsonDom.format_content =
-                                format!("{}- {}", jsonDom.format_content, language);
+                                format!("{}{}", jsonDom.format_content, language);
                         }
                     }
 
@@ -713,6 +713,9 @@ impl<'o> HtmlSlideFormatter<'o> {
 
                     self.escape(&ncb.literal)?;
                     self.output.write_all(b"</code></pre>\n")?;
+                } else {
+                    jsonDom.format_content =
+                    format!("{}{}\n", jsonDom.format_content, "```".to_string());
                 }
             }
             NodeValue::HtmlBlock(ref nhb) => {
