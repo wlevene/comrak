@@ -138,7 +138,11 @@ pub fn markdown_to_html(md: &str, options: &ComrakOptions) -> String {
 
 /// Render Markdown to HTML For WebAssmbly.
 ///
-/// return JsValue.
+/// # Arguments
+/// * `md` - Markdown string
+/// # Returns
+/// * `JsValue` - js value for WebAssmbly
+///
 #[wasm_bindgen]
 pub fn markdown_to_html_wasm_bindgen_js(input: &str) -> JsValue {
     let mut jsonDom = SlideHtmlDom::new();
@@ -197,8 +201,11 @@ pub fn markdown_to_html_wasm_bindgen_js(input: &str) -> JsValue {
 }
 
 /// Render Markdown to HTML For WebAssmbly.
+/// # Arguments
+/// * `md` - Markdown string
+/// # Returns
+/// * `String` - HTML string
 ///
-/// See the documentation of the crate root for an example.
 #[wasm_bindgen]
 pub fn markdown_to_html_wasm_bindgen(input: &str) -> String {
     let md_content = input;
@@ -286,7 +293,7 @@ pub fn greet(name: &str) {
 
 /// Test For WebAssmbly.
 ///
-/// See the documentation of the crate root for an example.
+///
 #[wasm_bindgen]
 pub fn test_echo(a: i32) -> i32 {
     a + 1

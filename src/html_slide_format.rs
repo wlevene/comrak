@@ -688,34 +688,29 @@ impl<'o> HtmlSlideFormatter<'o> {
                         println!("language：{}", language);
                         if &language == "note" {
                             is_note = true;
-                            println!("--< note");
                             jsonDom.format_notes =
                                 format!("{}", String::from_utf8_lossy(&ncb.literal));
                         } else {
                             jsonDom.format_content =
-                                format!("{}\n{}", jsonDom.format_content, "```".to_string());
-
-                            jsonDom.format_content =
-                                format!("{}{}", jsonDom.format_content, language);
+                                format!("{}\n{}{}", jsonDom.format_content, "```".to_string(), language);
                         }
                     }
 
-                    if is_note == false {
+                    if !is_note {
                         jsonDom.format_content = format!(
                             "{}\n{}",
                             jsonDom.format_content,
                             String::from_utf8_lossy(&ncb.literal)
                         );
-                    }
 
-                    // jsonDom.format_content =
-                    //     format!("{}- {}", jsonDom.format_content, "\n```\n".to_string());
+                        println!("String::from_utf8_lossy(&ncb.literal):{}", String::from_utf8_lossy(&ncb.literal));
+                    }
 
                     self.escape(&ncb.literal)?;
                     self.output.write_all(b"</code></pre>\n")?;
                 } else {
                     jsonDom.format_content =
-                    format!("{}{}\n", jsonDom.format_content, "```".to_string());
+                    format!("{}{}", jsonDom.format_content, "```".to_string());
                 }
             }
             NodeValue::HtmlBlock(ref nhb) => {
